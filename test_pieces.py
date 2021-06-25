@@ -126,7 +126,50 @@ class TestSquare(unittest.TestCase):
 
 
 class TestPawn(unittest.TestCase):
-    pass
+
+    def setUp(self):
+
+        self.coords1 = (1, 2)
+        self.coords2 = (3, 4)
+
+        self.white_pawn1 = pieces.Pawn(self.coords1, True)
+        self.white_pawn2 = pieces.Pawn(self.coords2, True)
+
+        self.black_pawn1 = pieces.Pawn(self.coords1, False)
+        self.black_pawn2 = pieces.Pawn(self.coords2, False)
+
+    def test_is_piece(self):
+
+        self.assertTrue(self.white_pawn1.is_piece())
+        self.assertTrue(self.white_pawn2.is_piece())
+        self.assertTrue(self.black_pawn1.is_piece())
+        self.assertTrue(self.black_pawn2.is_piece())
+
+    def test_char_rep(self):
+
+        rep = 'P'
+        self.assertEqual(rep, self.white_pawn1.char_rep())
+        self.assertEqual(rep, self.white_pawn2.char_rep())
+        self.assertEqual(rep, self.black_pawn1.char_rep())
+        self.assertEqual(rep, self.black_pawn2.char_rep())
+
+    def test_long_name(self):
+
+        long_name = "Pawn"
+        self.assertEqual(long_name, self.white_pawn1.long_name())
+        self.assertEqual(long_name, self.white_pawn2.long_name())
+        self.assertEqual(long_name, self.black_pawn1.long_name())
+        self.assertEqual(long_name, self.black_pawn2.long_name())
+
+    def test_is_white(self):
+
+        self.assertTrue(self.white_pawn1.is_white())
+        self.assertTrue(self.white_pawn2.is_white())
+        self.assertFalse(self.black_pawn1.is_white())
+        self.assertFalse(self.black_pawn2.is_white())
+
+    def test_is_valid_move(self):
+        pass
 
 
 class TestRook(unittest.TestCase):
