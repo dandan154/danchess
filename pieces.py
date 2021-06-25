@@ -6,6 +6,7 @@ class Board:
         self._board_size = 8
         self._cur_player_is_white = True
         self._taken_pieces = []
+
         self.initialize_board()
 
     def initialize_board(self):
@@ -30,6 +31,12 @@ class Board:
     def set_square(self, square, piece):
         self._board[square[1]][square[0]] = piece
 
+    def get_board_size(self):
+        return self._board_size
+
+    def change_player(self):
+        self._cur_player_is_white = not self._cur_player_is_white
+
     def pprint_board(self):
         board_char = [[self._board[x][y].char_rep() for y in range(self._board_size)] for x in range(self._board_size)]
         pprint.pprint(board_char)
@@ -41,30 +48,30 @@ class Board:
             logging.info("Selected square {} doesn't contain a piece".format(piece_square))
             return False, "Selected square {} doesn't contain a piece".format(piece_square)
 
-        if sq.is_white() != self._cur_player_is_white:
+        if sq.is_white() is not self._cur_player_is_white:
             return False, "Selected {} on {} is not your piece!".format(sq.long_name(), piece_square)
+
+        return True, ""
+
+    def check_if_move_valid(self, piece_square, new_square):
+        piece_sq = self.get_square(piece_square)
+
+        is_valid, err_msg = piece_sq.is_valid_move(new_square, self)
+
+        return is_valid, err_msg
 
     def move_piece(self, piece_square, new_square):
         piece_sq = self.get_square(piece_square)
         new_sq = self.get_square(new_square)
 
-        is_valid, err_msg = piece_sq.is_valid_move(new_square, self._board)
-
-        if not is_valid:
-            piece_sq.move(new_square)
+        piece_sq.move(new_square)
 
             # Record that piece has been taken.
-            if new_sq.is_piece():
-                self._taken_pieces.append(new_sq)
+        if new_sq.is_piece():
+            self._taken_pieces.append(new_sq)
 
-            self.set_square(new_square, piece_sq)
-            self.set_square(piece_square, Square(piece_square))
-
-
-        else:
-            return False, err_msg
-
-
+        self.set_square(new_square, piece_sq)
+        self.set_square(piece_square, Square(piece_square))
 
 class Square:
     def __init__(self, cur_square):
@@ -91,7 +98,7 @@ class Square:
 class Pawn(Square):
     def __init__(self, cur_square, is_white):
         super().__init__(cur_square)
-        self.is_white = is_white
+        self._is_white = is_white
         self.has_moved = False
 
         logging.info("Pawn initialised - coords: {}, is_white: {}".format(cur_square, is_white))
@@ -109,7 +116,7 @@ class Pawn(Square):
         return "Pawn"
 
     def is_white(self):
-        return self.is_white
+        return self._is_white
 
     def is_valid_move(self, new_square, board):
         logging.info("Checking validity of Pawn move from {} to {}".format(self.cur_square, new_square))
@@ -117,7 +124,7 @@ class Pawn(Square):
         y_diff = self.cur_square[1] - new_square[1]
 
         # White and Black pawns move in opposite directions
-        if self.is_white:
+        if self._is_white:
             y_diff = -y_diff
 
         # Pawns cannot move backwards and Pawns must move.
@@ -130,12 +137,12 @@ class Pawn(Square):
 
         # Pawns cannot move more than 1 square on x-axis (and only occurs during capture)
         if abs(x_diff) > 1:
-            return False
+            return False, "Pawns cannot move more than 1 square on x-axis (only during captures)"
 
         # Check if move is an attack
         if x_diff == 0:
             # move is not a capture, check if squares between cur square and square to move to are empty
-            if self.is_white:
+            if self._is_white:
                 for y in range(self.cur_square[1]+1, new_square[1]+1):
                     square_to_check = board.get_square((new_square[0], y))
                     if square_to_check.is_piece():
@@ -149,7 +156,7 @@ class Pawn(Square):
 
             # DOES THIS MOVE RESULT IN A CHECK? - FUTURE FUNCTIONALITY
 
-            return True
+            return True, ""
 
         else:
             # Pawns capture 1 square diagonally.
@@ -161,7 +168,7 @@ class Pawn(Square):
                 return False, "Cannot move diagonally unless it's a capture."
 
             # Cannot capture own piece
-            if square_to_check.is_white == self.is_white:
+            if square_to_check.is_white() == self._is_white:
                 return False, "Cannot capture own piece!"
 
             return True
@@ -234,7 +241,7 @@ class Rook(Square):
         landing_square = board.get_square(new_square)
 
         # Can't capture own piece.
-        if landing_square.is_piece() and landing_square.is_white:
+        if landing_square.is_piece() and landing_square._is_white:
             return False, "The {} on {} belongs to you!".format(landing_square.long_name(), new_square)
 
         return True
