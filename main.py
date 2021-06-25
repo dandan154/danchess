@@ -1,5 +1,4 @@
 import logging
-import os
 
 import pieces
 
@@ -70,13 +69,11 @@ def process_player_move(board):
 def main():
     logging.basicConfig(filename="app.log", format='%(asctime)s - %(message)s', level=logging.INFO)
 
-    cur_player = "white"
     turn = 1
 
     board = pieces.Board()
 
     while turn < 10:
-        os.system('clear')
         board.pprint_board()
         print("White to move - Turn {}".format(turn))
         process_player_move(board)
