@@ -1,5 +1,4 @@
 import logging
-import pprint
 
 
 class Board:
@@ -14,7 +13,6 @@ class Board:
     def _initialize_board(self):
         # Fill board with Squares
         self._board = [[Square((x, y)) for y in range(self._board_size)] for x in range(self._board_size)]
-
 
         # 2nd Rank should be white pawns, 7th Rank should be black pawns
         for x in range(self._board_size):
@@ -40,6 +38,9 @@ class Board:
     def get_taken_pieces(self):
         return self._taken_pieces
 
+    def get_board(self):
+        return self._board
+
     def change_player(self):
         self._cur_player_is_white = not self._cur_player_is_white
 
@@ -49,7 +50,6 @@ class Board:
             for y in range(self._board_size):
                 row.append(str(self._board[x][y]))
             print(row)
-
 
     def check_if_selection_valid(self, piece_square):
         sq = self.get_square(piece_square)
@@ -85,7 +85,8 @@ class Board:
 
 
 class Square:
-    def __init__(self, cur_square):
+    def __init__(self, cur_square, **kwargs):
+        super().__init__(**kwargs)
         self._cur_square = cur_square
         logging.info("Square initialised - coords: {}".format(cur_square))
 
@@ -107,25 +108,46 @@ class Square:
     def set_cur_square(self, cur_square):
         self._cur_square = cur_square
 
-    def is_valid_move(self, new_square, board):
-        logging.warning("No move rules are defined for this - coords: {}".format(self._cur_square))
-        return False, "No move rules are defined for this - coords: {}".format(self._cur_square)
-
     def __str__(self):
         return self.char_rep()
 
 
-class Pawn(Square):
-    def __init__(self, cur_square, is_white):
-        super().__init__(cur_square)
-        self._is_white = is_white
-        self.has_moved = False
+class Piece(Square):
 
-        logging.info("Pawn initialised - coords: {}, is_white: {}".format(cur_square, is_white))
+    def __init__(self, is_white, **kwargs):
+        super().__init__(**kwargs)
+        self._is_white = is_white
 
     @staticmethod
     def is_piece():
         return True
+
+    def is_white(self):
+        return self._is_white
+
+    def is_valid_move(self, new_square, board):
+        logging.warning("No move rules are defined for this - coords: {}".format(self._cur_square))
+        return False, "No move rules are defined for this - coords: {}".format(self._cur_square)
+
+
+class HasMovedMixin:
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self._has_moved = False
+
+    def get_has_moved(self):
+        return self._has_moved
+
+    def set_has_moved(self, has_moved):
+        self._has_moved = has_moved
+
+
+class Pawn(Piece, HasMovedMixin):
+    def __init__(self, cur_square, is_white):
+        super().__init__(cur_square=cur_square, is_white=is_white)
+
+        logging.info("Pawn initialised - coords: {}, is_white: {}".format(cur_square, is_white))
 
     @staticmethod
     def char_rep():
@@ -134,9 +156,6 @@ class Pawn(Square):
     @staticmethod
     def long_name():
         return "Pawn"
-
-    def is_white(self):
-        return self._is_white
 
     def is_valid_move(self, new_square, board):
         logging.info("Checking validity of Pawn move from {} to {}".format(self._cur_square, new_square))
@@ -152,7 +171,7 @@ class Pawn(Square):
             return False, "Pawns must at least 1 square forward."
 
         # Pawns cannot move more that 1 square (or 2 square on first move)
-        if y_diff > 2 or y_diff > 1 and self.has_moved:
+        if y_diff > 2 or y_diff > 1 and self.get_has_moved():
             return False, "Pawns cannot move forward more that 1 square (or 2 square on first move)"
 
         # Pawns cannot move more than 1 square on x-axis (and only occurs during capture)
@@ -202,20 +221,21 @@ class Pawn(Square):
     def move(self, new_square):
         logging.info("Updating Pawn variables after move")
         self._cur_square = new_square
-        if not self.has_moved:
-            self.has_moved = True
+        if not self.get_has_moved():
+            self.set_has_moved(True)
+
+    def __str__(self):
+        if self._is_white:
+            return self.char_rep() + "(W)"
+        else:
+            return self.char_rep() + "(B)"
 
 
-class Rook(Square):
+class Rook(Piece, HasMovedMixin):
     def __init__(self, cur_square, is_white):
-        super().__init__(cur_square)
-        self._is_white = is_white
-        self.has_moved = False
-        logging.info("Rook initialised - coords: {}, is_white: {}".format(cur_square, is_white))
+        super().__init__(cur_square=cur_square, is_white=is_white)
 
-    @staticmethod
-    def is_piece():
-        return True
+        logging.info("Rook initialised - coords: {}, is_white: {}".format(cur_square, is_white))
 
     @staticmethod
     def char_rep():
@@ -224,9 +244,6 @@ class Rook(Square):
     @staticmethod
     def long_name():
         return "Rook"
-
-    def is_white(self):
-        return self._is_white
 
     def is_valid_move(self, new_square, board):
         logging.info("Checking validity of Rook move from {} to {}".format(self._cur_square, new_square))
@@ -275,5 +292,50 @@ class Rook(Square):
     def move(self, new_square):
         logging.info("Updating Rook variables after move")
         self._cur_square = new_square
-        if not self.has_moved:
-            self.has_moved = True
+        if not self.get_has_moved():
+            self.set_has_moved(True)
+
+    def __str__(self):
+        if self._is_white:
+            return self.char_rep() + "(W)"
+        else:
+            return self.char_rep() + "(B)"
+
+
+class Bishop(Piece):
+    def __init__(self, cur_square, is_white):
+        super().__init__(cur_square=cur_square, is_white=is_white)
+        logging.info("Bishop initialised - coords: {}, is_white: {}".format(cur_square, is_white))
+
+    @staticmethod
+    def char_rep():
+        return 'B'
+
+    @staticmethod
+    def long_name():
+        return "Bishop"
+
+
+class Knight(Piece):
+    def __init__(self, cur_square, is_white):
+        super().__init__(cur_square)
+        self._is_white = is_white
+        logging.info("Rook initialised - coords: {}, is_white: {}".format(cur_square, is_white))
+
+    @staticmethod
+    def char_rep():
+        return 'N'
+
+    @staticmethod
+    def long_name():
+        return "Knight"
+
+
+class Queen(Piece):
+    pass
+
+class King(Piece):
+    pass
+
+
+
