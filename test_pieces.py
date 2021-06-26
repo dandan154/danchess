@@ -180,16 +180,26 @@ class TestSquare(unittest.TestCase):
         self.assertEqual(self.square2.char_rep(), '0')
 
     def test_long_name(self):
-        self.assertEqual(self.square1.long_name(), "Empty Square")
-        self.assertEqual(self.square2.long_name(), "Empty Square")
+        self.assertEqual(self.square1.long_name(), "Square")
+        self.assertEqual(self.square2.long_name(), "Square")
 
     def test_get_cur_square(self):
         self.assertEqual(self.square1.get_cur_square(), self.coords1)
         self.assertEqual(self.square2.get_cur_square(), self.coords2)
 
+
+class TestPiece(unittest.TestCase):
+
+    def setUp(self):
+        self.coords1 = (1, 2)
+        self.coords2 = (2, 1)
+
+        self.piece1 = pieces.Piece(True, cur_square=self.coords1)
+        self.piece2 = pieces.Piece(False, cur_square=self.coords2)
+
     def test_is_valid_move(self):
-        res1, err1 = self.square1.is_valid_move((1,2), None)
-        res2, err2 = self.square2.is_valid_move((2,2), None)
+        res1, err1 = self.piece1.is_valid_move((1,2), None)
+        res2, err2 = self.piece2.is_valid_move((2,2), None)
 
         self.assertFalse(res1)
         self.assertEqual(err1, "No move rules are defined for this - coords: {}".format(self.coords1))
