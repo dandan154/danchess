@@ -9,11 +9,12 @@ class Board:
         self._taken_pieces = []
         self._board = None
 
-        self.initialize_board()
+        self._initialize_board()
 
-    def initialize_board(self):
+    def _initialize_board(self):
         # Fill board with Squares
-        self._board = [[Square((x, y)) for x in range(self._board_size)] for y in range(self._board_size)]
+        self._board = [[Square((x, y)) for y in range(self._board_size)] for x in range(self._board_size)]
+
 
         # 2nd Rank should be white pawns, 7th Rank should be black pawns
         for x in range(self._board_size):
@@ -22,9 +23,9 @@ class Board:
 
         # Corners should be Rooks
         self._board[0][0] = Rook((0, 0), True)
-        self._board[0][7] = Rook((0, 7), True)
+        self._board[0][7] = Rook((7, 0), True)
 
-        self._board[7][0] = Rook((0, 0), False)
+        self._board[7][0] = Rook((0, 7), False)
         self._board[7][7] = Rook((7, 7), False)
 
     def get_square(self, square):
@@ -36,12 +37,19 @@ class Board:
     def get_board_size(self):
         return self._board_size
 
+    def get_taken_pieces(self):
+        return self._taken_pieces
+
     def change_player(self):
         self._cur_player_is_white = not self._cur_player_is_white
 
-    def pprint_board(self):
-        board_char = [[self._board[x][y].char_rep() for y in range(self._board_size)] for x in range(self._board_size)]
-        pprint.pprint(board_char)
+    def print_board(self):
+        for x in range(self._board_size):
+            row = []
+            for y in range(self._board_size):
+                row.append(str(self._board[x][y]))
+            print(row)
+
 
     def check_if_selection_valid(self, piece_square):
         sq = self.get_square(piece_square)
@@ -78,7 +86,7 @@ class Board:
 
 class Square:
     def __init__(self, cur_square):
-        self.cur_square = cur_square
+        self._cur_square = cur_square
         logging.info("Square initialised - coords: {}".format(cur_square))
 
     @staticmethod
@@ -93,9 +101,18 @@ class Square:
     def long_name():
         return "Empty Square"
 
+    def get_cur_square(self):
+        return self._cur_square
+
+    def set_cur_square(self, cur_square):
+        self._cur_square = cur_square
+
     def is_valid_move(self, new_square, board):
-        logging.warning("No move rules are defined for this - coords: {}".format(self.cur_square))
-        return False
+        logging.warning("No move rules are defined for this - coords: {}".format(self._cur_square))
+        return False, "No move rules are defined for this - coords: {}".format(self._cur_square)
+
+    def __str__(self):
+        return self.char_rep()
 
 
 class Pawn(Square):
@@ -122,9 +139,9 @@ class Pawn(Square):
         return self._is_white
 
     def is_valid_move(self, new_square, board):
-        logging.info("Checking validity of Pawn move from {} to {}".format(self.cur_square, new_square))
-        x_diff = self.cur_square[0] - new_square[0]
-        y_diff = self.cur_square[1] - new_square[1]
+        logging.info("Checking validity of Pawn move from {} to {}".format(self._cur_square, new_square))
+        x_diff = self._cur_square[0] - new_square[0]
+        y_diff = self._cur_square[1] - new_square[1]
 
         # White and Black pawns move in opposite directions
         if self._is_white:
@@ -132,7 +149,7 @@ class Pawn(Square):
 
         # Pawns cannot move backwards and Pawns must move.
         if y_diff < 1:
-            return False
+            return False, "Pawns must at least 1 square forward."
 
         # Pawns cannot move more that 1 square (or 2 square on first move)
         if y_diff > 2 or y_diff > 1 and self.has_moved:
@@ -146,7 +163,7 @@ class Pawn(Square):
         if x_diff == 0:
             # move is not a capture, check if squares between cur square and square to move to are empty
             if self._is_white:
-                for y in range(self.cur_square[1]+1, new_square[1]+1):
+                for y in range(self._cur_square[1] + 1, new_square[1] + 1):
                     square_to_check = board.get_square((new_square[0], y))
                     if square_to_check.is_piece():
                         return False, "Pawn is blocked by {} on {}".format(
@@ -155,7 +172,7 @@ class Pawn(Square):
                         )
 
             else:
-                for y in range(new_square[1], self.cur_square[1]):
+                for y in range(new_square[1], self._cur_square[1]):
                     square_to_check = board.get_square((new_square[0], y))
                     if square_to_check.is_piece():
                         return False, "Pawn is blocked by {} on {}".format(
@@ -180,11 +197,11 @@ class Pawn(Square):
             if square_to_check.is_white() == self._is_white:
                 return False, "Cannot capture own piece!"
 
-            return True
+            return True, ""
 
     def move(self, new_square):
         logging.info("Updating Pawn variables after move")
-        self.cur_square = new_square
+        self._cur_square = new_square
         if not self.has_moved:
             self.has_moved = True
 
@@ -192,7 +209,7 @@ class Pawn(Square):
 class Rook(Square):
     def __init__(self, cur_square, is_white):
         super().__init__(cur_square)
-        self.is_white = is_white
+        self._is_white = is_white
         self.has_moved = False
         logging.info("Rook initialised - coords: {}, is_white: {}".format(cur_square, is_white))
 
@@ -209,12 +226,12 @@ class Rook(Square):
         return "Rook"
 
     def is_white(self):
-        return self.is_white
+        return self._is_white
 
     def is_valid_move(self, new_square, board):
-        logging.info("Checking validity of Rook move from {} to {}".format(self.cur_square, new_square))
-        x_diff = self.cur_square[0] - new_square[0]
-        y_diff = self.cur_square[1] - new_square[1]
+        logging.info("Checking validity of Rook move from {} to {}".format(self._cur_square, new_square))
+        x_diff = self._cur_square[0] - new_square[0]
+        y_diff = self._cur_square[1] - new_square[1]
 
         # Rooks can only move along one axis at a time.
         if abs(x_diff) > 0 and abs(y_diff) > 0:
@@ -224,23 +241,24 @@ class Rook(Square):
         if x_diff == 0 and y_diff == 0:
             return False, "Piece cannot remain in same square!"
 
-        loop_inc = 1
+        loop_inc = -1
         if x_diff < 0 or y_diff < 0:
-            loop_inc = -1
+            loop_inc = 1
 
         # Check for pieces between cur square and new square.
         if abs(y_diff) > 0:
             # Check all squares leading up to landing square for pieces.
-            for y in range(self.cur_square[1] + loop_inc, new_square[1], loop_inc):
-                tmp_coord = (self.cur_square[0], y)
+            for y in range(self._cur_square[1] + loop_inc, new_square[1], loop_inc):
+                tmp_coord = (self._cur_square[0], y)
+                print("checking square", tmp_coord)
                 logging.debug("Checking square {}".format(tmp_coord))
                 square_to_check = board.get_square(tmp_coord)
                 if square_to_check.is_piece():
                     return False, "Rook is blocked by {} on {}".format(square_to_check.long_name(), tmp_coord)
         else:
             # Check all squares leading up to landing square for pieces.
-            for x in range(self.cur_square[0]+loop_inc, new_square[0], loop_inc):
-                tmp_coord = (x, self.cur_square[1])
+            for x in range(self._cur_square[0] + loop_inc, new_square[0], loop_inc):
+                tmp_coord = (x, self._cur_square[1])
                 logging.debug("Checking square {}".format(tmp_coord))
                 square_to_check = board.get_square(tmp_coord)
                 if square_to_check.is_piece():
@@ -249,13 +267,13 @@ class Rook(Square):
         landing_square = board.get_square(new_square)
 
         # Can't capture own piece.
-        if landing_square.is_piece() and landing_square.is_white():
+        if landing_square.is_piece() and landing_square.is_white() == self.is_white():
             return False, "The {} on {} belongs to you!".format(landing_square.long_name(), new_square)
 
-        return True
+        return True, ""
 
     def move(self, new_square):
         logging.info("Updating Rook variables after move")
-        self.cur_square = new_square
+        self._cur_square = new_square
         if not self.has_moved:
             self.has_moved = True
