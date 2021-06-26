@@ -1,5 +1,5 @@
 import logging
-from string import ascii_uppercase
+import arcade
 
 import pieces
 
@@ -9,7 +9,7 @@ def print_board_to_user(board):
     size = board.get_board_size()
 
     for y in range(size-1, -1, -1):
-        #Print rank numbers
+        # Print rank numbers
         print("{0: >6}".format(str(y) + " |"), end='')
         for x in range(size):
             sq = squares[y][x]
@@ -45,11 +45,12 @@ def get_coordinate_pair(board_size):
                 raise ValueError
 
             successful_input = True
+
+            return (piece_x, piece_y)
+
         except ValueError:
             print("INVALID, choose an int between 0 and 7 ")
             successful_input = False
-
-    return (piece_x, piece_y)
 
 
 def process_player_move(board):
@@ -100,13 +101,12 @@ def main():
     board = pieces.Board()
 
     while turn < 10:
-        board.print_board()
         print_board_to_user(board)
         print("White to move - Turn {}".format(turn))
         process_player_move(board)
         board.change_player()
 
-        board.print_board()
+        print_board_to_user(board)
         print("Black to move - Turn {}".format(turn))
         process_player_move(board)
         board.change_player()

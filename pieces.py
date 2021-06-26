@@ -86,6 +86,10 @@ class Board:
         return True, ""
 
     def check_if_move_valid(self, piece_square, new_square):
+
+        if piece_square == new_square:
+            return False, "Piece cannot remain in same square!"
+
         piece_sq = self.get_square(piece_square)
 
         is_valid, err_msg = piece_sq.is_valid_move(new_square, self)
@@ -276,10 +280,6 @@ class Rook(Piece, HasMovedMixin):
         if abs(x_diff) > 0 and abs(y_diff) > 0:
             return False, "Rooks can only move along one axis at a time."
 
-        # Rook must move
-        if x_diff == 0 and y_diff == 0:
-            return False, "Piece cannot remain in same square!"
-
         loop_inc = -1
         if x_diff < 0 or y_diff < 0:
             loop_inc = 1
@@ -336,9 +336,6 @@ class Bishop(Piece):
         x_diff = cur_square[0] - new_square[0]
         y_diff = cur_square[1] - new_square[1]
 
-        if x_diff == 0:
-            return False, "Piece cannot remain in same square!"
-
         if abs(x_diff) != abs(y_diff):
             return False, "Bishops only move diagonally!"
 
@@ -364,6 +361,10 @@ class Bishop(Piece):
 
         return True, ""
 
+    def move(self, new_square):
+        logging.info("Updating Bishop variables after move")
+        self._cur_square = new_square
+
 
 class Knight(Piece):
     def __init__(self, cur_square, is_white):
@@ -377,6 +378,23 @@ class Knight(Piece):
     @staticmethod
     def long_name():
         return "Knight"
+
+    def is_valid_move(self, new_square, board):
+        cur_square = self.get_cur_square()
+        x_diff = cur_square[0] - new_square[0]
+        y_diff = cur_square[1] - new_square[1]
+
+        abs_x = abs(x_diff)
+        abs_y = abs(y_diff)
+
+        if abs_x == 2 and abs_y == 1 or abs_x == 1 and abs_y == 2:
+            return True, ""
+        else:
+            return False, "Knights move in L-shapes. (1 square on one axis and 2 along another.)"
+
+    def move(self, new_square):
+        logging.info("Updating Knight variables after move")
+        self._cur_square = new_square
 
 
 class Queen(Piece):
@@ -392,6 +410,72 @@ class Queen(Piece):
     def long_name():
         return "Queen"
 
+    def is_valid_move(self, new_square, board):
+        cur_square = self.get_cur_square()
+        x_diff = cur_square[0] - new_square[0]
+        y_diff = cur_square[1] - new_square[1]
+
+        abs_x = abs(x_diff)
+        abs_y = abs(y_diff)
+
+        # Check if moving vertically/horizontally
+        if not (abs_x > 0 and abs_y > 0):
+            # TODO: Refactor Rook move validation into reusable function, remove this repetition.
+
+            loop_inc = -1
+            if x_diff < 0 or y_diff < 0:
+                loop_inc = 1
+
+            if abs_y > 0:
+                # Check all squares leading up to landing square for pieces.
+                for y in range(self._cur_square[1] + loop_inc, new_square[1], loop_inc):
+                    tmp_coord = (self._cur_square[0], y)
+                    logging.debug("Checking square {}".format(tmp_coord))
+                    square_to_check = board.get_square(tmp_coord)
+                    if square_to_check.is_piece():
+                        return False, "Rook is blocked by {} on {}".format(square_to_check.long_name(), tmp_coord)
+            else:
+                # Check all squares leading up to landing square for pieces.
+                for x in range(self._cur_square[0] + loop_inc, new_square[0], loop_inc):
+                    tmp_coord = (x, self._cur_square[1])
+                    logging.debug("Checking square {}".format(tmp_coord))
+                    square_to_check = board.get_square(tmp_coord)
+                    if square_to_check.is_piece():
+                        return False, "Rook is blocked by {} on {}".format(square_to_check.long_name(), tmp_coord)
+
+        # Check if moving diagonally
+        elif abs_x == abs_y:
+
+            # TODO: Refactor Bishop move validation into reusable function, remove this repetition.
+            x_inc = -1
+            if x_diff < 0:
+                x_inc = 1
+
+            y_inc = -1
+            if y_diff < 0:
+                y_inc = 1
+
+            for i in range(1, abs(x_diff)):
+                tmp_coord = (cur_square[0] + (i * x_inc), cur_square[1] + (i * y_inc))
+                sq_to_check = board.get_square(tmp_coord)
+                if sq_to_check.is_piece():
+                    return False, "Bishop is blocked by {} on {}".format(sq_to_check.long_name(), tmp_coord)
+
+        else:
+            return False, "Queens move diagonally or in a straight line!"
+
+        landing_square = board.get_square(new_square)
+
+        # Can't capture own piece.
+        if landing_square.is_piece() and landing_square.is_white() == self.is_white():
+            return False, "The {} on {} belongs to you!".format(landing_square.long_name(), new_square)
+
+        return True, ""
+
+    def move(self, new_square):
+        logging.info("Updating Queen variables after move")
+        self._cur_square = new_square
+
 
 class King(Piece, HasMovedMixin):
     def __init__(self, cur_square, is_white):
@@ -405,3 +489,26 @@ class King(Piece, HasMovedMixin):
     @staticmethod
     def long_name():
         return "King"
+
+    def is_valid_move(self, new_square, board):
+        cur_square = self.get_cur_square()
+        abs_x = abs(cur_square[0] - new_square[0])
+        abs_y = abs(cur_square[1] - new_square[1])
+
+        if abs_x > 1 or abs_y > 1:
+            return False, "The King can only move one square at a time!"
+
+        landing_square = board.get_square(new_square)
+
+        # Can't capture own piece.
+        if landing_square.is_piece() and landing_square.is_white() == self.is_white():
+            return False, "The {} on {} belongs to you!".format(landing_square.long_name(), new_square)
+
+        return True, ""
+
+    def move(self, new_square):
+        logging.info("Updating Rook variables after move")
+        self._cur_square = new_square
+        if not self.get_has_moved():
+            self.set_has_moved(True)
+
