@@ -11,8 +11,49 @@ class TestBoard(unittest.TestCase):
 
     def test_initialize_board(self):
         # Confirm that all pieces are assigned in correct location and that initial vars are set correctly
-        pass
-        
+        for x in range(2, self.board1._board_size-2):
+            for y in range(2, self.board1._board_size-2):
+                square = self.board1._board[x][y]
+                self.assertIsInstance(square, pieces.Square)
+                self.assertEqual(square._cur_square, (x, y))
+
+        # Confirm that second rank is all white pawns.
+        for x in range(self.board1._board_size):
+            pawn = self.board1._board[1][x]
+            self.assertIsInstance(pawn, pieces.Pawn)
+            self.assertEqual(pawn._cur_square, (x, 1))
+            self.assertTrue(pawn.is_white())
+
+        # Confirm that 7th rank is all black pawns
+        for x in range(self.board1._board_size):
+            pawn = self.board1._board[6][x]
+            self.assertIsInstance(pawn, pieces.Pawn)
+            self.assertEqual(pawn._cur_square, (x, 6))
+            self.assertFalse(pawn.is_white())
+
+        # Confirm corner squares are rooks of appropriate colours
+        white_rook1 = self.board1._board[0][0]
+        white_rook2 = self.board1._board[0][7]
+
+        black_rook1 = self.board1._board[7][0]
+        black_rook2 = self.board1._board[7][7]
+
+        self.assertIsInstance(white_rook1, pieces.Rook)
+        self.assertEqual(white_rook1._cur_square, (0,0))
+        self.assertTrue(white_rook1.is_white())
+
+        self.assertIsInstance(white_rook2, pieces.Rook)
+        self.assertEqual(white_rook2._cur_square, (7,0))
+        self.assertTrue(white_rook2.is_white())
+
+        self.assertIsInstance(black_rook1, pieces.Rook)
+        self.assertEqual(black_rook1._cur_square, (0,7))
+        self.assertFalse(black_rook1.is_white())
+
+        self.assertIsInstance(black_rook2, pieces.Rook)
+        self.assertEqual(black_rook2._cur_square, (7,7))
+        self.assertFalse(black_rook2.is_white())
+
     def test_get_square(self):
         square1 = pieces.Square((4, 4))
         square2 = pieces.Pawn((7, 7), True)
@@ -122,7 +163,39 @@ class TestBoard(unittest.TestCase):
 
 
 class TestSquare(unittest.TestCase):
-    pass
+
+    def setUp(self):
+        self.coords1 = (1, 2)
+        self.coords2 = (2, 1)
+
+        self.square1 = pieces.Square(self.coords1)
+        self.square2 = pieces.Square(self.coords2)
+
+    def test_is_piece(self):
+        self.assertFalse(self.square1.is_piece())
+        self.assertFalse(self.square2.is_piece())
+
+    def test_char_rep(self):
+        self.assertEqual(self.square1.char_rep(), '0')
+        self.assertEqual(self.square2.char_rep(), '0')
+
+    def test_long_name(self):
+        self.assertEqual(self.square1.long_name(), "Empty Square")
+        self.assertEqual(self.square2.long_name(), "Empty Square")
+
+    def test_get_cur_square(self):
+        self.assertEqual(self.square1.get_cur_square(), self.coords1)
+        self.assertEqual(self.square2.get_cur_square(), self.coords2)
+
+    def test_is_valid_move(self):
+        res1, err1 = self.square1.is_valid_move((1,2), None)
+        res2, err2 = self.square2.is_valid_move((2,2), None)
+
+        self.assertFalse(res1)
+        self.assertEqual(err1, "No move rules are defined for this - coords: {}".format(self.coords1))
+
+        self.assertFalse(res2)
+        self.assertEqual(err2, "No move rules are defined for this - coords: {}".format(self.coords2))
 
 
 class TestPawn(unittest.TestCase):
@@ -169,6 +242,9 @@ class TestPawn(unittest.TestCase):
         self.assertFalse(self.black_pawn2.is_white())
 
     def test_is_valid_move(self):
+        pass
+
+    def test_move(self):
         pass
 
 
