@@ -26,6 +26,29 @@ class Board:
         self._board[7][0] = Rook((0, 7), False)
         self._board[7][7] = Rook((7, 7), False)
 
+        # Squares adjacent to Rooks should be Knights
+        self._board[0][1] = Knight((1, 0), True)
+        self._board[0][6] = Knight((6, 0), True)
+
+        self._board[7][1] = Knight((1, 7), False)
+        self._board[7][6] = Knight((6, 7), False)
+
+        # Squares adjacent to Knights should be Bishops
+        self._board[0][2] = Bishop((2, 0), True)
+        self._board[0][5] = Bishop((5, 0), True)
+
+        self._board[7][2] = Bishop((2, 7), False)
+        self._board[7][5] = Bishop((5, 7), False)
+
+        #Queens are on D file
+        self._board[0][3] = Queen((3, 0), True)
+        self._board[7][3] = Queen((3, 7), False)
+
+        # Kings are on E file
+        self._board[0][4] = King((4, 0), True)
+        self._board[7][4] = King((4, 7), False)
+
+
     def get_square(self, square):
         return self._board[square[1]][square[0]]
 
@@ -100,7 +123,7 @@ class Square:
 
     @staticmethod
     def long_name():
-        return "Empty Square"
+        return "Square"
 
     def get_cur_square(self):
         return self._cur_square
@@ -128,6 +151,12 @@ class Piece(Square):
     def is_valid_move(self, new_square, board):
         logging.warning("No move rules are defined for this - coords: {}".format(self._cur_square))
         return False, "No move rules are defined for this - coords: {}".format(self._cur_square)
+
+    def __str__(self):
+        if self._is_white:
+            return self.char_rep() + "(W)"
+        else:
+            return self.char_rep() + "(B)"
 
 
 class HasMovedMixin:
@@ -224,12 +253,6 @@ class Pawn(Piece, HasMovedMixin):
         if not self.get_has_moved():
             self.set_has_moved(True)
 
-    def __str__(self):
-        if self._is_white:
-            return self.char_rep() + "(W)"
-        else:
-            return self.char_rep() + "(B)"
-
 
 class Rook(Piece, HasMovedMixin):
     def __init__(self, cur_square, is_white):
@@ -295,12 +318,6 @@ class Rook(Piece, HasMovedMixin):
         if not self.get_has_moved():
             self.set_has_moved(True)
 
-    def __str__(self):
-        if self._is_white:
-            return self.char_rep() + "(W)"
-        else:
-            return self.char_rep() + "(B)"
-
 
 class Bishop(Piece):
     def __init__(self, cur_square, is_white):
@@ -318,9 +335,8 @@ class Bishop(Piece):
 
 class Knight(Piece):
     def __init__(self, cur_square, is_white):
-        super().__init__(cur_square)
-        self._is_white = is_white
-        logging.info("Rook initialised - coords: {}, is_white: {}".format(cur_square, is_white))
+        super().__init__(cur_square=cur_square, is_white=is_white)
+        logging.info("Knight initialised - coords: {}, is_white: {}".format(cur_square, is_white))
 
     @staticmethod
     def char_rep():
@@ -332,10 +348,31 @@ class Knight(Piece):
 
 
 class Queen(Piece):
-    pass
+    def __init__(self, cur_square, is_white):
+        super().__init__(cur_square=cur_square, is_white=is_white)
+        logging.info("Queen initialised - coords: {}, is_white: {}".format(cur_square, is_white))
+
+    @staticmethod
+    def char_rep():
+        return 'Q'
+
+    @staticmethod
+    def long_name():
+        return "Queen"
+
 
 class King(Piece):
-    pass
+    def __init__(self, cur_square, is_white):
+        super().__init__(cur_square=cur_square, is_white=is_white)
+        logging.info("King initialised - coords: {}, is_white: {}".format(cur_square, is_white))
+
+    @staticmethod
+    def char_rep():
+        return 'K'
+
+    @staticmethod
+    def long_name():
+        return "King"
 
 
 
