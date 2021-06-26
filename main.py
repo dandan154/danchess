@@ -1,6 +1,32 @@
 import logging
+from string import ascii_uppercase
 
 import pieces
+
+
+def print_board_to_user(board):
+    squares = board.get_board()
+    size = board.get_board_size()
+
+    for y in range(size-1, -1, -1):
+        #Print rank numbers
+        print("{0: >6}".format(str(y) + " |"), end='')
+        for x in range(size):
+            sq = squares[y][x]
+            print("{0: ^6}".format(str(sq)), end='')
+        print()
+
+    # Print bottom divider line.
+    print("".rjust(6), end='')
+    for i in range(size):
+        print("{0: ^6}".format('______'), end='')
+    print()
+
+    # Print Row letters.
+    print("".rjust(6), end='')
+    for i in range(size):
+        print("{0: ^6}".format(i), end='')
+    print()
 
 
 def get_coordinate_pair(board_size):
@@ -9,24 +35,24 @@ def get_coordinate_pair(board_size):
     while not successful_input:
         try:
             piece_x = int(input("Enter x coordinate: "))
-            piece_y = int(input("Enter y coordinate: "))
 
-            if piece_x < 1 or piece_x > board_size:
+            if piece_x < 0 or piece_x > board_size-1:
                 raise ValueError
 
-            if piece_y < 1 or piece_y > board_size:
+            piece_y = int(input("Enter y coordinate: "))
+
+            if piece_y < 0 or piece_y > board_size-1:
                 raise ValueError
 
             successful_input = True
         except ValueError:
-            print("INVALID, choose an int between 1 and 8 ")
+            print("INVALID, choose an int between 0 and 7 ")
             successful_input = False
 
     return (piece_x, piece_y)
 
 
 def process_player_move(board):
-
 
     confirm = False
     while confirm is False:
@@ -42,7 +68,7 @@ def process_player_move(board):
 
         res = False
         while res is False:
-            print("select square to move {} on {}".format(select_piece, board.get_square(select_piece).long_name()))
+            print("select square to move {} on {}".format(board.get_square(select_piece).long_name(), select_piece))
             square_to_move = get_coordinate_pair(board.get_board_size())
             res, err_msg = board.check_if_move_valid(select_piece, square_to_move)
 
@@ -74,12 +100,13 @@ def main():
     board = pieces.Board()
 
     while turn < 10:
-        board.pprint_board()
+        board.print_board()
+        print_board_to_user(board)
         print("White to move - Turn {}".format(turn))
         process_player_move(board)
         board.change_player()
 
-        board.pprint_board()
+        board.print_board()
         print("Black to move - Turn {}".format(turn))
         process_player_move(board)
         board.change_player()
