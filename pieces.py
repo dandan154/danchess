@@ -40,14 +40,13 @@ class Board:
         self._board[7][2] = Bishop((2, 7), False)
         self._board[7][5] = Bishop((5, 7), False)
 
-        #Queens are on D file
+        # Queens are on D file
         self._board[0][3] = Queen((3, 0), True)
         self._board[7][3] = Queen((3, 7), False)
 
         # Kings are on E file
         self._board[0][4] = King((4, 0), True)
         self._board[7][4] = King((4, 7), False)
-
 
     def get_square(self, square):
         return self._board[square[1]][square[0]]
@@ -332,6 +331,39 @@ class Bishop(Piece):
     def long_name():
         return "Bishop"
 
+    def is_valid_move(self, new_square, board):
+        cur_square = self.get_cur_square()
+        x_diff = cur_square[0] - new_square[0]
+        y_diff = cur_square[1] - new_square[1]
+
+        if x_diff == 0:
+            return False, "Piece cannot remain in same square!"
+
+        if abs(x_diff) != abs(y_diff):
+            return False, "Bishops only move diagonally!"
+
+        x_inc = -1
+        if x_diff < 0:
+            x_inc = 1
+
+        y_inc = -1
+        if y_diff < 0:
+            y_inc = 1
+
+        for i in range(1, abs(x_diff)):
+            tmp_coord = (cur_square[0] + (i * x_inc), cur_square[1] + (i * y_inc))
+            sq_to_check = board.get_square(tmp_coord)
+            if sq_to_check.is_piece():
+                return False, "Bishop is blocked by {} on {}".format(sq_to_check.long_name(), tmp_coord)
+
+        landing_square = board.get_square(new_square)
+
+        # Can't capture own piece.
+        if landing_square.is_piece() and landing_square.is_white() == self.is_white():
+            return False, "The {} on {} belongs to you!".format(landing_square.long_name(), new_square)
+
+        return True, ""
+
 
 class Knight(Piece):
     def __init__(self, cur_square, is_white):
@@ -361,7 +393,7 @@ class Queen(Piece):
         return "Queen"
 
 
-class King(Piece):
+class King(Piece, HasMovedMixin):
     def __init__(self, cur_square, is_white):
         super().__init__(cur_square=cur_square, is_white=is_white)
         logging.info("King initialised - coords: {}, is_white: {}".format(cur_square, is_white))
@@ -373,6 +405,3 @@ class King(Piece):
     @staticmethod
     def long_name():
         return "King"
-
-
-
