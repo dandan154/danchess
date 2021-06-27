@@ -126,7 +126,7 @@ class ChessView(arcade.View):
         for y in range(self.tile_count_y):
             arcade.draw_text(
                 str(y+1),
-                self.tile_draw_start_x- SQUARE_WIDTH,
+                self.tile_draw_start_x - SQUARE_WIDTH,
                 self.tile_draw_start_y + SQUARE_WIDTH * y - 10,
                 arcade.color.BLACK,
                 18,
@@ -142,8 +142,6 @@ class ChessView(arcade.View):
         if clicked_tile[1] < 0 or clicked_tile[1] > (self.board.get_board_size()-1):
             return
 
-
-        #IF NO FIRST PIECE SELECTED
         if self.piece_selected is None:
             res, err = self.board.check_if_selection_valid(clicked_tile)
             if res:
