@@ -38,9 +38,13 @@ SPRITE_LOOKUP_DICT = {
 class ChessView(arcade.View):
     def __init__(self):
         super().__init__()
-        arcade.set_background_color(arcade.color.ALMOND)
 
+        # GAME VARS
         self.board = pieces.Board()
+        self.piece_selected = None
+
+        # RENDERING LOGIC
+        arcade.set_background_color(arcade.color.ALMOND)
 
         self.tile_count_x = self.board.get_board_size()
         self.tile_count_y = self.board.get_board_size()
@@ -52,12 +56,26 @@ class ChessView(arcade.View):
 
     def setup(self):
 
-        #Create initial sprite list for pieces
-        self.chess_piece_sprite_list = arcade.SpriteList()
+        # Create initial sprite list for pieces
+
+        self._gen_piece_placement()
+
+    def on_draw(self):
+        arcade.start_render()
+
+        self._draw_board()
+        self.chess_piece_sprite_list.draw()
+
+    def _gen_piece_placement(self):
         oriented_board = self.board.get_board()
+
+        self.chess_piece_sprite_list = arcade.SpriteList()
+
         for x in range(self.tile_count_x):
             for y in range(self.tile_count_y):
-                piece_img_path = SPRITE_LOOKUP_DICT[str(oriented_board[x][y])]
+
+                piece_img_path = SPRITE_LOOKUP_DICT[str(oriented_board[y][x])]  # Reverse x and y for proper orientation
+
                 if piece_img_path is not None:
                     piece_sprite = arcade.Sprite(
                         "images/{}".format(piece_img_path),
@@ -68,15 +86,13 @@ class ChessView(arcade.View):
 
                     self.chess_piece_sprite_list.append(piece_sprite)
 
-    def on_draw(self):
-        arcade.start_render()
-
+    def _draw_board(self):
         # Draw Squares of Board
         for x in range(self.tile_count_x):
             for y in range(self.tile_count_y):
-                tmp_colour = arcade.color.LIGHT_GRAY
+                tmp_colour = arcade.color.ARSENIC
                 if (x + y) % 2:
-                    tmp_colour = arcade.color.ARSENIC
+                    tmp_colour = arcade.color.LIGHT_GRAY
 
                 arcade.draw_rectangle_filled(
                     self.tile_draw_start_x + SQUARE_WIDTH * x,
@@ -116,8 +132,6 @@ class ChessView(arcade.View):
                 18,
             )
 
-        self.chess_piece_sprite_list.draw()
-
     def on_mouse_press(self, x: float, y: float, button: int, modifiers: int):
         clicked_tile = self._calc_board_coord(x, y)
 
@@ -128,14 +142,33 @@ class ChessView(arcade.View):
         if clicked_tile[1] < 0 or clicked_tile[1] > (self.board.get_board_size()-1):
             return
 
-        print(clicked_tile)
+
+        #IF NO FIRST PIECE SELECTED
+        if self.piece_selected is None:
+            res, err = self.board.check_if_selection_valid(clicked_tile)
+            if res:
+                self.piece_selected = clicked_tile
+            else:
+                print(err)
+
+        else:
+            res, err = self.board.check_if_move_valid(self.piece_selected, clicked_tile)
+
+            if res:
+                self.board.move_piece(self.piece_selected, clicked_tile)
+                self._gen_piece_placement()
+                self.board.change_player()
+            else:
+                print(err)
+
+            self.piece_selected = None
 
     def _calc_board_coord(self, x, y):
         file = x - self.tile_draw_start_x + (SQUARE_WIDTH/2)
-        file = file // SQUARE_WIDTH
+        file = int(file // SQUARE_WIDTH)
 
         rank = y - self.tile_draw_start_y + (SQUARE_HEIGHT/2)
-        rank = rank // SQUARE_HEIGHT
+        rank = int(rank // SQUARE_HEIGHT)
 
         return file, rank
 
