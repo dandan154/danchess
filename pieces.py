@@ -1,3 +1,4 @@
+from copy import deepcopy
 import logging
 
 
@@ -7,6 +8,8 @@ class Board:
         self._cur_player_is_white = True
         self._taken_pieces = []
         self._board = None
+        self._white_king_coords = None
+        self._black_king_coords = None
 
         self._initialize_board()
 
@@ -45,8 +48,11 @@ class Board:
         self._board[7][3] = Queen((3, 7), False)
 
         # Kings are on E file
-        self._board[0][4] = King((4, 0), True)
-        self._board[7][4] = King((4, 7), False)
+        self._white_king_coords = (4, 0)
+        self._black_king_coords = (4, 7)
+
+        self._board[self._white_king_coords[1]][self._white_king_coords[0]] = King(self._white_king_coords, True)
+        self._board[self._black_king_coords[1]][self._black_king_coords[0]] = King(self._black_king_coords, False)
 
     def get_square(self, square):
         return self._board[square[1]][square[0]]
@@ -92,11 +98,32 @@ class Board:
 
         piece_sq = self.get_square(piece_square)
 
+        # Check if move is valid
         is_valid, err_msg = piece_sq.is_valid_move(new_square, self)
+        if not is_valid:
+            return is_valid, err_msg
 
-        return is_valid, err_msg
+        # Check if current move would put current player into check
+        tmp_board = deepcopy(self)
+        tmp_board.move_piece(piece_square, new_square)
+        is_check, err = tmp_board.is_cur_player_in_check()
+
+        return not is_check, err
+
+
+    def is_cur_player_in_check(self):
+
+        if self._cur_player_is_white:
+            cur_king = self.get_square(self._white_king_coords)
+        else:
+            cur_king = self.get_square(self._black_king_coords)
+
+        res, err = cur_king.is_in_check(self)
+
+        return res, err
 
     def move_piece(self, piece_square, new_square):
+
         piece_sq = self.get_square(piece_square)
         new_sq = self.get_square(new_square)
 
@@ -108,6 +135,12 @@ class Board:
 
         self.set_square(new_square, piece_sq)
         self.set_square(piece_square, Square(piece_square))
+
+        #Update king position if king was moved
+        if piece_square == self._black_king_coords:
+            self._black_king_coords = new_square
+        elif piece_square == self._white_king_coords:
+            self._white_king_coords = new_square
 
 
 class Square:
@@ -490,6 +523,46 @@ class King(Piece, HasMovedMixin):
     def long_name():
         return "King"
 
+    def is_in_check(self, board):
+
+        size = board.get_board_size()
+        cur_square_coords = self.get_cur_square()
+
+        # If Queen or Bishop is on any open diagonal to king position, then you're in check.
+        direction = [1, -1]
+
+        for x_dir in direction:
+            x = cur_square_coords[0] + 1
+            if x_dir > 0:
+                x = size - cur_square_coords[0]
+
+            for y_dir in direction:
+                y = cur_square_coords[1] + 1
+                if y_dir > 0:
+                    y = size - cur_square_coords[1]
+
+                loop_count = min([x, y])
+
+                for i in range(1, loop_count):
+                    sq_coords = (cur_square_coords[0] + (i * x_dir), cur_square_coords[1] + (i * y_dir))
+                    sq = board.get_square(sq_coords)
+                    if sq.is_piece():
+                        print("{} {}".format(sq.char_rep(), sq_coords))
+                        if sq.is_white() != self.is_white():
+                            if sq.char_rep() == Bishop.char_rep() or sq.char_rep() == Queen.char_rep():
+                                return True, "In check: Enemy {} on {}".format(sq.long_name(), sq_coords)
+                        break
+
+        # If Pawn is on top adjacent diagonal squares (bottom diagonals for white), then you're in check.
+
+        # If Rook or Queen is on any open row or column, then you're in check.
+
+        # If Knight is an L-shape away from king, then you're in check.
+
+        # If King is adjacent its "check"
+
+        return False, ""
+
     def is_valid_move(self, new_square, board):
         cur_square = self.get_cur_square()
         abs_x = abs(cur_square[0] - new_square[0])
@@ -504,6 +577,8 @@ class King(Piece, HasMovedMixin):
         if landing_square.is_piece() and landing_square.is_white() == self.is_white():
             return False, "The {} on {} belongs to you!".format(landing_square.long_name(), new_square)
 
+        res, err = self.is_in_check(board)
+        print(res, err)
         return True, ""
 
     def move(self, new_square):
