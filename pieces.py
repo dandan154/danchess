@@ -69,8 +69,12 @@ class Board:
     def get_board(self):
         return self._board
 
+    def is_cur_player_white(self):
+        return self._cur_player_is_white
+
     def change_player(self):
         self._cur_player_is_white = not self._cur_player_is_white
+        return self._cur_player_is_white
 
     def print_board(self):
         for x in range(self._board_size):
@@ -110,7 +114,6 @@ class Board:
 
         return not is_check, err
 
-
     def is_cur_player_in_check(self):
 
         if self._cur_player_is_white:
@@ -136,7 +139,7 @@ class Board:
         self.set_square(new_square, piece_sq)
         self.set_square(piece_square, Square(piece_square))
 
-        #Update king position if king was moved
+        # Update king position if king was moved
         if piece_square == self._black_king_coords:
             self._black_king_coords = new_square
         elif piece_square == self._white_king_coords:
@@ -586,4 +589,3 @@ class King(Piece, HasMovedMixin):
         self._cur_square = new_square
         if not self.get_has_moved():
             self.set_has_moved(True)
-

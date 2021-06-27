@@ -42,6 +42,7 @@ class ChessView(arcade.View):
         # GAME VARS
         self.board = pieces.Board()
         self.piece_selected = None
+        self.is_white_perspective_active = True
 
         # RENDERING LOGIC
         arcade.set_background_color(arcade.color.ALMOND)
@@ -81,8 +82,13 @@ class ChessView(arcade.View):
                         "images/{}".format(piece_img_path),
                         IMAGE_SCALE
                     )
-                    piece_sprite.center_x = self.tile_draw_start_x + SQUARE_WIDTH * x
-                    piece_sprite.center_y = self.tile_draw_start_y + SQUARE_HEIGHT * y
+
+                    if self.is_white_perspective_active:
+                        piece_sprite.center_x = self.tile_draw_start_x + SQUARE_WIDTH * x
+                        piece_sprite.center_y = self.tile_draw_start_y + SQUARE_HEIGHT * y
+                    else:
+                        piece_sprite.center_x = self.tile_draw_start_x + SQUARE_WIDTH * (self.tile_count_x - 1 - x)
+                        piece_sprite.center_y = self.tile_draw_start_y + SQUARE_HEIGHT * (self.tile_count_y - 1 - y)
 
                     self.chess_piece_sprite_list.append(piece_sprite)
 
@@ -112,20 +118,28 @@ class ChessView(arcade.View):
             5
         )
 
+        file_chars = ascii_uppercase[:self.tile_count_x]
+        if self.is_white_perspective_active is False:
+            file_chars = file_chars[::-1]
+
         # Draw letters along bottom of board
         for x in range(self.tile_count_x):
             arcade.draw_text(
-                ascii_uppercase[x],
+                file_chars[x],
                 self.tile_draw_start_x + SQUARE_WIDTH * x - 10,
                 self.tile_draw_start_y - SQUARE_HEIGHT,
                 arcade.color.BLACK,
                 18,
             )
 
+        rank_chars = "12345678"
+        if self.is_white_perspective_active is False:
+            rank_chars = rank_chars[::-1]
+
         # Draw numbers along side of board
         for y in range(self.tile_count_y):
             arcade.draw_text(
-                str(y+1),
+                rank_chars[y],
                 self.tile_draw_start_x - SQUARE_WIDTH,
                 self.tile_draw_start_y + SQUARE_WIDTH * y - 10,
                 arcade.color.BLACK,
@@ -142,6 +156,10 @@ class ChessView(arcade.View):
         if clicked_tile[1] < 0 or clicked_tile[1] > (self.board.get_board_size()-1):
             return
 
+        # Reverse selected tile if playing as Black
+        if not self.board.is_cur_player_white():
+            clicked_tile = (self.tile_count_x - 1 - clicked_tile[0], self.tile_count_y - 1 - clicked_tile[1])
+
         if self.piece_selected is None:
             res, err = self.board.check_if_selection_valid(clicked_tile)
             if res:
@@ -154,8 +172,11 @@ class ChessView(arcade.View):
 
             if res:
                 self.board.move_piece(self.piece_selected, clicked_tile)
+
+                self.is_white_perspective_active = self.board.change_player()
+
                 self._gen_piece_placement()
-                self.board.change_player()
+
             else:
                 print(err)
 
