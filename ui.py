@@ -1,7 +1,9 @@
 import arcade
-import pieces
-
+import sys
+import os
 from string import ascii_uppercase
+
+import pieces
 
 # Screen constants
 SCREEN_HEIGHT = 768
@@ -79,7 +81,7 @@ class ChessView(arcade.View):
 
                 if piece_img_path is not None:
                     piece_sprite = arcade.Sprite(
-                        "images/{}".format(piece_img_path),
+                        "resources/images/{}".format(piece_img_path),
                         IMAGE_SCALE
                     )
 
@@ -199,6 +201,12 @@ class ChessView(arcade.View):
 
 
 def main():
+
+    #Pyinstaller Boilerplate for data files
+    if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
+        os.chdir(sys._MEIPASS)
+
+    #MAIN SCRIPT
     window = arcade.Window(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE)
     chess_view = ChessView()
 

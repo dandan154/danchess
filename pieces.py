@@ -608,7 +608,7 @@ class King(Piece, HasMovedMixin):
                 sq_coords = (cur_square_coords[0] + x, cur_square_coords[1] + y)
                 sq = board.get_square(sq_coords)
                 if sq is not None and sq.char_rep() == King.char_rep():
-                    return True, "In check: Enemy {} on {}".format(sq.long_name(),sq_coords )
+                    return True, "In check: Enemy {} on {}".format(sq.long_name(),sq_coords)
 
         return False, ""
 
