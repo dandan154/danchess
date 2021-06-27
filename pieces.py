@@ -55,6 +55,8 @@ class Board:
         self._board[self._black_king_coords[1]][self._black_king_coords[0]] = King(self._black_king_coords, False)
 
     def get_square(self, square):
+        if square[0] > self._board_size-1 or square[0] < 0 or square[1] > self._board_size-1 or square[1] < 0:
+            return None
         return self._board[square[1]][square[0]]
 
     def set_square(self, square, piece):
@@ -531,9 +533,7 @@ class King(Piece, HasMovedMixin):
         size = board.get_board_size()
         cur_square_coords = self.get_cur_square()
 
-        # If Queen or Bishop is on any open diagonal to king position, then you're in check.
         direction = [1, -1]
-
         for x_dir in direction:
             x = cur_square_coords[0] + 1
             if x_dir > 0:
@@ -544,8 +544,8 @@ class King(Piece, HasMovedMixin):
                 if y_dir > 0:
                     y = size - cur_square_coords[1]
 
+                # BISHOPS/QUEENS - Check if there are any enemy queens or bishops on open diagonals.
                 loop_count = min([x, y])
-
                 for i in range(1, loop_count):
                     sq_coords = (cur_square_coords[0] + (i * x_dir), cur_square_coords[1] + (i * y_dir))
                     sq = board.get_square(sq_coords)
@@ -556,13 +556,59 @@ class King(Piece, HasMovedMixin):
                                 return True, "In check: Enemy {} on {}".format(sq.long_name(), sq_coords)
                         break
 
-        # If Pawn is on top adjacent diagonal squares (bottom diagonals for white), then you're in check.
+                # KNIGHTS - If Knight is an L-shape away from king, then you're in check.
+                knight_coords = [(cur_square_coords[0] + (2 * x_dir), cur_square_coords[1] + y_dir),
+                                 (cur_square_coords[0] + x_dir, cur_square_coords[1] + (2 * y_dir))]
 
-        # If Rook or Queen is on any open row or column, then you're in check.
+                for coord in knight_coords:
+                    sq = board.get_square(coord)
+                    if sq is not None and sq.char_rep() == Knight.char_rep() and self.is_white() != sq.is_white():
+                        return True, "In check: Enemy {} on {}".format(sq.long_name(), coord)
 
-        # If Knight is an L-shape away from king, then you're in check.
+                # ROOKS/QUEENS - Check if there are any enemy queens or rooks on open files
+                for i in range(1, y):
+                    sq_coords = (cur_square_coords[0], cur_square_coords[1] + (i * y_dir))
+                    sq = board.get_square(sq_coords)
+                    if sq.is_piece():
+                        print("{} {}".format(sq.char_rep(), sq_coords))
+                        if sq.is_white() != self.is_white():
+                            if sq.char_rep() == Rook.char_rep() or sq.char_rep() == Queen.char_rep():
+                                return True, "In check: Enemy {} on {}".format(sq.long_name(), sq_coords)
+                        break
+
+            # ROOKS/QUEENS - Check if there are any enemy queens or rooks on open ranks
+            for i in range(1, x):
+                sq_coords = (cur_square_coords[0] + (i * x_dir), cur_square_coords[1])
+                sq = board.get_square(sq_coords)
+                if sq.is_piece():
+                    print("{} {}".format(sq.char_rep(), sq_coords))
+                    if sq.is_white() != self.is_white():
+                        if sq.char_rep() == Rook.char_rep() or sq.char_rep() == Queen.char_rep():
+                            return True, "In check: Enemy {} on {}".format(sq.long_name(), sq_coords)
+                    break
+
+            # PAWNS - If Pawn is on top adjacent diagonal squares (bottom diagonals for white), then you're in check.
+            if self.is_white():
+                sq_coords = (cur_square_coords[0] + (1 * x_dir), cur_square_coords[1] + 1)
+            else:
+                sq_coords = (cur_square_coords[0] + (1 * x_dir), cur_square_coords[1] - 1)
+
+            sq = board.get_square(sq_coords)
+
+            if sq is not None and sq.char_rep() == Pawn.char_rep() and self.is_white() != sq.is_white():
+                return True, "In check: Enemy {} on {}".format(sq.long_name(), sq_coords)
 
         # If King is adjacent its "check"
+        square_to_check = [1, 0, -1]
+        for x in square_to_check:
+            for y in square_to_check:
+                if x == 0 and y == 0:
+                    continue
+
+                sq_coords = (cur_square_coords[0] + x, cur_square_coords[1] + y)
+                sq = board.get_square(sq_coords)
+                if sq is not None and sq.char_rep() == King.char_rep():
+                    return True, "In check: Enemy {} on {}".format(sq.long_name(),sq_coords )
 
         return False, ""
 
