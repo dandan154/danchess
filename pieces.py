@@ -139,6 +139,37 @@ class Board:
         piece_sq = self.get_square(piece_square)
         new_sq = self.get_square(new_square)
 
+        # If Castling do something different
+        if piece_square == self._black_king_coords or piece_square == self._white_king_coords:
+            x_dir = piece_square[0] - new_square[0]
+            # Make sure is castling here
+            if abs(x_dir) > 1:
+                if x_dir > 0:
+                    new_rook_square = (new_square[0] + 1, new_square[1])
+                    r = Rook(new_rook_square, self._cur_player_is_white)
+                    r.set_has_moved(True)
+
+                    self.set_square(new_rook_square, r)
+                    self.set_square((0, piece_square[1]), Square((0, new_square[1])))
+                # Go right
+                else:
+                    new_rook_square = (new_square[0] - 1, new_square[1])
+                    r = Rook(new_rook_square, self._cur_player_is_white)
+                    r.set_has_moved(True)
+
+                    self.set_square(new_rook_square, r)
+                    self.set_square((7, piece_square[1]), Square((7, new_square[1])))
+
+
+        # Update king position if king was moved
+        if piece_square == self._black_king_coords:
+            self._black_king_coords = new_square
+        elif piece_square == self._white_king_coords:
+            self._white_king_coords = new_square
+
+
+
+
         piece_sq.move(new_square)
 
         # Record that piece has been taken.
@@ -148,12 +179,15 @@ class Board:
         self.set_square(new_square, piece_sq)
         self.set_square(piece_square, Square(piece_square))
 
-        # Update king position if king was moved
-        if piece_square == self._black_king_coords:
-            self._black_king_coords = new_square
-        elif piece_square == self._white_king_coords:
-            self._white_king_coords = new_square
 
+    def _move_piece_castling(self):
+        pass
+
+    def _move_piece__pawn_promotion(self):
+        pass
+
+    def _move_piece_en_passant(self):
+        pass
 
 class Square:
     def __init__(self, cur_square, **kwargs):
@@ -623,8 +657,49 @@ class King(Piece, HasMovedMixin):
 
     def is_valid_move(self, new_square, board):
         cur_square = self.get_cur_square()
-        abs_x = abs(cur_square[0] - new_square[0])
-        abs_y = abs(cur_square[1] - new_square[1])
+        x = cur_square[0] - new_square[0]
+        y = cur_square[1] - new_square[1]
+        abs_x = abs(x)
+        abs_y = abs(y)
+        print(x, y, abs_x, abs_y)
+
+        if self._has_moved is False and abs_x == 2:
+            # TODO: If expanding for Chess960 rules, will need to be more dynamic.
+            if x > 0:
+                rook_x = 0
+                for i in range(rook_x+1, cur_square[0]):
+                    piece = board.get_square((i, cur_square[1]))
+                    if piece.is_piece():
+                        return False, "Cannot castle, {} on {}".format(piece.char_rep(), (i, cur_square[1]))
+
+                # Would king be in check if moved to any of travelled squares?
+                for i in range(rook_x+2, cur_square[0]):
+                    tmp_board = deepcopy(board)
+                    tmp_board.move_piece(cur_square, (i, cur_square[1]))
+                    is_check, err = tmp_board.is_cur_player_in_check()
+                    if is_check is True:
+                        return False, "Cannot castle, Would result in check on {}".format((i, cur_square[1]))
+
+            else:
+                rook_x = 7
+                for i in range(cur_square[0]+1, rook_x):
+                    piece = board.get_square((i, cur_square[1]))
+                    print((i, cur_square[1]))
+                    if piece.is_piece():
+                        return False, "Cannot castle, {} on {}".format(piece.char_rep(), (i, cur_square[1]))
+
+                for i in range(cur_square[0]+1, rook_x-1):
+                    tmp_board = deepcopy(board)
+                    tmp_board.move_piece(cur_square, (i, cur_square[1]))
+                    is_check, err = tmp_board.is_cur_player_in_check()
+                    if is_check is True:
+                        return False, "Cannot castle, Would result in check on {}".format((i, cur_square[1]))
+
+            rook = board.get_square((rook_x, cur_square[1]))
+            if rook.char_rep() != Rook.char_rep() or rook.get_has_moved() is True:
+                return False, "Rook on {} has already moved!".format((rook_x, cur_square[1]))
+
+            return True, ""
 
         if abs_x > 1 or abs_y > 1:
             return False, "The King can only move one square at a time!"
