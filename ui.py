@@ -20,6 +20,13 @@ PIECE_HEIGHT = 40
 PIECE_WIDTH = 40
 IMAGE_SCALE = 3.0
 
+#Colours
+BLACK_SQUARE_COLOUR = arcade.color.ARSENIC
+WHITE_SQUARE_COLOUR = arcade.color.LIGHT_GRAY
+SELECTED_SQUARE_COLOUR = arcade.color.PINK
+
+
+
 SPRITE_LOOKUP_DICT = {
     "B(B)": "bishop-black-16x16.png",
     "B(W)": "bishop-white-16x16.png",
@@ -98,17 +105,22 @@ class ChessView(arcade.View):
         # Draw Squares of Board
         for x in range(self.tile_count_x):
             for y in range(self.tile_count_y):
-                tmp_colour = arcade.color.ARSENIC
                 if (x + y) % 2:
-                    tmp_colour = arcade.color.LIGHT_GRAY
-
-                arcade.draw_rectangle_filled(
-                    self.tile_draw_start_x + SQUARE_WIDTH * x,
-                    self.tile_draw_start_y + SQUARE_HEIGHT * y,
-                    SQUARE_WIDTH,
-                    SQUARE_HEIGHT,
-                    tmp_colour
-                )
+                    arcade.draw_rectangle_filled(
+                        self.tile_draw_start_x + SQUARE_WIDTH * x,
+                        self.tile_draw_start_y + SQUARE_HEIGHT * y,
+                        SQUARE_WIDTH,
+                        SQUARE_HEIGHT,
+                        WHITE_SQUARE_COLOUR
+                    )
+                else:
+                    arcade.draw_rectangle_filled(
+                        self.tile_draw_start_x + SQUARE_WIDTH * x,
+                        self.tile_draw_start_y + SQUARE_HEIGHT * y,
+                        SQUARE_WIDTH,
+                        SQUARE_HEIGHT,
+                        BLACK_SQUARE_COLOUR
+                    )
 
         # Draw Outline around board.
         arcade.draw_rectangle_outline(
@@ -148,6 +160,23 @@ class ChessView(arcade.View):
                 18,
             )
 
+        # Draw highlight around selected piece
+        if self.piece_selected is not None:
+            if self.is_white_perspective_active:
+                select_x = self.piece_selected[0]
+                select_y = self.piece_selected[1]
+            else:
+                select_x = self.tile_count_x - 1 - self.piece_selected[0]
+                select_y = self.tile_count_y - 1 - self.piece_selected[1]
+
+            arcade.draw_rectangle_filled(
+                self.tile_draw_start_x + (SQUARE_WIDTH * select_x),
+                self.tile_draw_start_y + (SQUARE_HEIGHT * select_y),
+                SQUARE_WIDTH,
+                SQUARE_HEIGHT,
+                SELECTED_SQUARE_COLOUR
+            )
+
     def on_mouse_press(self, x: float, y: float, button: int, modifiers: int):
         clicked_tile = self._calc_board_coord(x, y)
 
@@ -159,7 +188,7 @@ class ChessView(arcade.View):
             return
 
         # Reverse selected tile if playing as Black
-        if not self.board.is_cur_player_white():
+        if not self.is_white_perspective_active:
             clicked_tile = (self.tile_count_x - 1 - clicked_tile[0], self.tile_count_y - 1 - clicked_tile[1])
 
         if self.piece_selected is None:
@@ -174,9 +203,7 @@ class ChessView(arcade.View):
 
             if res:
                 self.board.move_piece(self.piece_selected, clicked_tile)
-
-                self.is_white_perspective_active = self.board.change_player()
-
+                self.board.change_player()
                 self._gen_piece_placement()
 
             else:
@@ -192,6 +219,11 @@ class ChessView(arcade.View):
         rank = int(rank // SQUARE_HEIGHT)
 
         return file, rank
+
+    def on_key_press(self, symbol: int, modifiers: int):
+        if symbol == arcade.key.SPACE:
+            self.is_white_perspective_active = not self.is_white_perspective_active
+            self._gen_piece_placement()
 
     def on_mouse_release(self, x: float, y: float, button: int, modifiers: int):
         pass
