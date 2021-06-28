@@ -18,12 +18,13 @@ SQUARE_WIDTH = 80
 # Piece constants
 PIECE_HEIGHT = 40
 PIECE_WIDTH = 40
-IMAGE_SCALE = 3.0
+IMAGE_SCALE = 3.2
 
 #Colours
 BLACK_SQUARE_COLOUR = arcade.color.ARSENIC
 WHITE_SQUARE_COLOUR = arcade.color.LIGHT_GRAY
-SELECTED_SQUARE_COLOUR = arcade.color.PINK
+SELECTED_SQUARE_COLOUR = arcade.color.ARYLIDE_YELLOW
+CHECK_COLOUR = arcade.color.DARK_PASTEL_RED
 
 
 
@@ -52,6 +53,7 @@ class ChessView(arcade.View):
         self.board = pieces.Board()
         self.piece_selected = None
         self.is_white_perspective_active = True
+        self.highlight_checked_king = False
 
         # RENDERING LOGIC
         arcade.set_background_color(arcade.color.ALMOND)
@@ -160,6 +162,25 @@ class ChessView(arcade.View):
                 18,
             )
 
+
+        # Draw highlight around checked king
+        if self.highlight_checked_king:
+            king_coords = self.board.get_cur_king_coords()
+            if self.is_white_perspective_active:
+                select_x = king_coords[0]
+                select_y = king_coords[1]
+            else:
+                select_x = self.tile_count_x - 1 - king_coords[0]
+                select_y = self.tile_count_y - 1 - king_coords[1]
+
+            arcade.draw_rectangle_filled(
+                self.tile_draw_start_x + (SQUARE_WIDTH * select_x),
+                self.tile_draw_start_y + (SQUARE_HEIGHT * select_y),
+                SQUARE_WIDTH,
+                SQUARE_HEIGHT,
+                CHECK_COLOUR
+            )
+
         # Draw highlight around selected piece
         if self.piece_selected is not None:
             if self.is_white_perspective_active:
@@ -205,6 +226,8 @@ class ChessView(arcade.View):
                 self.board.move_piece(self.piece_selected, clicked_tile)
                 self.board.change_player()
                 self._gen_piece_placement()
+
+                self.highlight_checked_king, _ = self.board.is_cur_player_in_check()
 
             else:
                 print(err)

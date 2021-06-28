@@ -8,6 +8,7 @@ class Board:
         self._cur_player_is_white = True
         self._taken_pieces = []
         self._board = None
+
         self._white_king_coords = None
         self._black_king_coords = None
 
@@ -77,6 +78,12 @@ class Board:
     def change_player(self):
         self._cur_player_is_white = not self._cur_player_is_white
         return self._cur_player_is_white
+
+    def get_cur_king_coords(self):
+        if self._cur_player_is_white:
+            return self._white_king_coords
+        else:
+            return self._black_king_coords
 
     def print_board(self):
         for x in range(self._board_size):
@@ -434,7 +441,6 @@ class Knight(Piece):
             return False, "The {} on {} belongs to you!".format(landing_square.long_name(), new_square)
 
         return True, ""
-
 
     def move(self, new_square):
         logging.info("Updating Knight variables after move")
