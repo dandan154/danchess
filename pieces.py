@@ -327,7 +327,6 @@ class Rook(Piece, HasMovedMixin):
             # Check all squares leading up to landing square for pieces.
             for y in range(self._cur_square[1] + loop_inc, new_square[1], loop_inc):
                 tmp_coord = (self._cur_square[0], y)
-                print("checking square", tmp_coord)
                 logging.debug("Checking square {}".format(tmp_coord))
                 square_to_check = board.get_square(tmp_coord)
                 if square_to_check.is_piece():
@@ -425,10 +424,17 @@ class Knight(Piece):
         abs_x = abs(x_diff)
         abs_y = abs(y_diff)
 
-        if abs_x == 2 and abs_y == 1 or abs_x == 1 and abs_y == 2:
-            return True, ""
-        else:
+        if not (abs_x == 2 and abs_y == 1 or abs_x == 1 and abs_y == 2):
             return False, "Knights move in L-shapes. (1 square on one axis and 2 along another.)"
+
+        landing_square = board.get_square(new_square)
+
+        # Can't capture own piece.
+        if landing_square.is_piece() and landing_square.is_white() == self.is_white():
+            return False, "The {} on {} belongs to you!".format(landing_square.long_name(), new_square)
+
+        return True, ""
+
 
     def move(self, new_square):
         logging.info("Updating Knight variables after move")
@@ -550,7 +556,6 @@ class King(Piece, HasMovedMixin):
                     sq_coords = (cur_square_coords[0] + (i * x_dir), cur_square_coords[1] + (i * y_dir))
                     sq = board.get_square(sq_coords)
                     if sq.is_piece():
-                        print("{} {}".format(sq.char_rep(), sq_coords))
                         if sq.is_white() != self.is_white():
                             if sq.char_rep() == Bishop.char_rep() or sq.char_rep() == Queen.char_rep():
                                 return True, "In check: Enemy {} on {}".format(sq.long_name(), sq_coords)
@@ -570,7 +575,6 @@ class King(Piece, HasMovedMixin):
                     sq_coords = (cur_square_coords[0], cur_square_coords[1] + (i * y_dir))
                     sq = board.get_square(sq_coords)
                     if sq.is_piece():
-                        print("{} {}".format(sq.char_rep(), sq_coords))
                         if sq.is_white() != self.is_white():
                             if sq.char_rep() == Rook.char_rep() or sq.char_rep() == Queen.char_rep():
                                 return True, "In check: Enemy {} on {}".format(sq.long_name(), sq_coords)
@@ -581,7 +585,6 @@ class King(Piece, HasMovedMixin):
                 sq_coords = (cur_square_coords[0] + (i * x_dir), cur_square_coords[1])
                 sq = board.get_square(sq_coords)
                 if sq.is_piece():
-                    print("{} {}".format(sq.char_rep(), sq_coords))
                     if sq.is_white() != self.is_white():
                         if sq.char_rep() == Rook.char_rep() or sq.char_rep() == Queen.char_rep():
                             return True, "In check: Enemy {} on {}".format(sq.long_name(), sq_coords)
