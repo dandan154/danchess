@@ -146,7 +146,7 @@ class Board:
 
         return res, err
 
-    def move_piece(self, piece_square, new_square, pawn_promotion_char=None):
+    def move_piece(self, piece_square, new_square):
 
         piece_sq = self.get_square(piece_square)
         new_sq = self.get_square(new_square)
@@ -158,11 +158,9 @@ class Board:
                 self._move_rook_when_castling(new_square, x_dir)
 
         # PAWN PROMOTION
+        # TODO: Allow to choose how pawn is promoted
         if self.check_if_pawn_promotion(piece_square, new_square):
-            if new_square[1] == self._board_size-1:
-                pass
-            else:
-                pass
+            piece_sq = Queen(piece_square, self._cur_player_is_white)
 
         # Update king position if king was moved
         if piece_square == self._black_king_coords:
@@ -186,6 +184,24 @@ class Board:
                 return True
         return False
 
+    def _move_rook_when_castling(self, new_square, x_dir):
+        # Rook should go next to king, towards the centre.
+        if x_dir > 0:
+            logging.info(f"Casting long: {new_square}")
+            new_rook_x = new_square[0] + 1
+            former_rook_x = 0
+        else:
+            logging.info(f"Casting short: {new_square}")
+            new_rook_x = new_square[0] - 1
+            former_rook_x = self._board_size-1
+
+        new_rook_square = (new_rook_x, new_square[1])
+        r = Rook(new_rook_square, self._cur_player_is_white)
+        r.set_has_moved(True)
+
+        self.set_square(new_rook_square, r)
+        self.set_square((former_rook_x, new_square[1]), Square((former_rook_x, new_square[1])))
+
     @staticmethod
     def _create_pawn_promotion_piece(piece_square, piece_type, is_white):
         if piece_type == Rook.char_rep():
@@ -197,24 +213,35 @@ class Board:
         else:
             return Queen(piece_square, is_white)
 
-    def _move_rook_when_castling(self, new_square, x_dir):
-        # Rook should go next to king, towards the centre.
-        if x_dir > 0:
-            logging.info(f"Casting long: {new_square}")
-            new_rook_x = new_square[0] + 1
-            former_rook_x = 0
-        else:
-            logging.info(f"Casting short: {new_square}")
-            new_rook_x = new_square[0] + 1
-            former_rook_x = self._board_size-1
+    def list_valid_moves_for_piece(self, piece_square):
+        piece = self.get_square(piece_square)
+        valid_moves = []
+        for x in range(self._board_size):
+            for y in range(self._board_size):
+                res, _ = self.check_if_move_valid(piece_square, (x,y))
+                if res:
+                    valid_moves.append((x, y))
+        return valid_moves
 
-        new_rook_square = (new_rook_x, new_square[1])
-        r = Rook(new_rook_square, self._cur_player_is_white)
-        r.set_has_moved(True)
+    def list_valid_moves_for_player(self):
+        possible_moves=[]
+        for x in range(self._board_size):
+            for y in range(self._board_size):
+                sq = self.get_square((x, y))
+                if sq.is_piece() and sq.is_white() == self._cur_player_is_white:
+                    pieces_moves = self.list_valid_moves_for_piece((x, y))
+                    for p_m in pieces_moves:
+                        possible_moves.append(p_m)
+        return possible_moves
 
-        self.set_square(new_rook_square, r)
-        self.set_square((former_rook_x, new_square[1]), Square((former_rook_x, new_square[1])))
-
+    def is_statemate_or_checkmate(self):
+        x = self.list_valid_moves_for_player()
+        if len(x) == 0:
+            if self.is_cur_player_in_check():
+                return "CHECKMATE"
+            else:
+                return "STALEMATE"
+        return None
 
 class Square:
     def __init__(self, cur_square, **kwargs):
@@ -665,7 +692,7 @@ class King(Piece, HasMovedMixin):
         abs_x = abs(x_diff)
         abs_y = abs(y_diff)
 
-        if self._has_moved is False and abs_x == 2:
+        if self._has_moved is False and abs_x == 2 and abs_y == 0:
             if board.is_cur_player_in_check() is False:
                 return False, "Cannot castle when in check"
 
