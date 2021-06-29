@@ -2,7 +2,19 @@ from copy import deepcopy
 import logging
 
 
+def is_landing_square_occupied(func):
+    def wrapper(self, new_square, board, *args, **kwargs):
+        val = func(self, new_square, board, *args, **kwargs)
+        landing_square = board.get_square(new_square)
+        # Can't capture own piece.
+        if landing_square.is_piece() and landing_square.is_white() == self.is_white():
+            val = False, "The {} on {} belongs to you!".format(landing_square.long_name(), new_square)
+        return val
+    return wrapper
+
+
 class Board:
+
     def __init__(self):
         self._board_size = 8
         self._cur_player_is_white = True
@@ -134,41 +146,29 @@ class Board:
 
         return res, err
 
-    def move_piece(self, piece_square, new_square):
+    def move_piece(self, piece_square, new_square, pawn_promotion_char=None):
 
         piece_sq = self.get_square(piece_square)
         new_sq = self.get_square(new_square)
 
-        # If Castling do something different
+        # CASTLING
         if piece_square == self._black_king_coords or piece_square == self._white_king_coords:
             x_dir = piece_square[0] - new_square[0]
-            # Make sure is castling here
             if abs(x_dir) > 1:
-                if x_dir > 0:
-                    new_rook_square = (new_square[0] + 1, new_square[1])
-                    r = Rook(new_rook_square, self._cur_player_is_white)
-                    r.set_has_moved(True)
+                self._move_rook_when_castling(new_square, x_dir)
 
-                    self.set_square(new_rook_square, r)
-                    self.set_square((0, piece_square[1]), Square((0, new_square[1])))
-                # Go right
-                else:
-                    new_rook_square = (new_square[0] - 1, new_square[1])
-                    r = Rook(new_rook_square, self._cur_player_is_white)
-                    r.set_has_moved(True)
-
-                    self.set_square(new_rook_square, r)
-                    self.set_square((7, piece_square[1]), Square((7, new_square[1])))
-
+        # PAWN PROMOTION
+        if self.check_if_pawn_promotion(piece_square, new_square):
+            if new_square[1] == self._board_size-1:
+                pass
+            else:
+                pass
 
         # Update king position if king was moved
         if piece_square == self._black_king_coords:
             self._black_king_coords = new_square
         elif piece_square == self._white_king_coords:
             self._white_king_coords = new_square
-
-
-
 
         piece_sq.move(new_square)
 
@@ -179,15 +179,42 @@ class Board:
         self.set_square(new_square, piece_sq)
         self.set_square(piece_square, Square(piece_square))
 
+    def check_if_pawn_promotion(self, piece_square, new_square):
+        sq = self.get_square(piece_square)
+        if sq.char_rep() == Pawn.char_rep():
+            if new_square[1] == 0 or new_square[1] == self._board_size-1:
+                return True
+        return False
 
-    def _move_piece_castling(self):
-        pass
+    @staticmethod
+    def _create_pawn_promotion_piece(piece_square, piece_type, is_white):
+        if piece_type == Rook.char_rep():
+            return Rook(piece_square, is_white)
+        elif piece_type == Knight.char_rep():
+            return Knight(piece_square, is_white)
+        elif piece_type == Bishop.char_rep():
+            return Bishop(piece_square, is_white)
+        else:
+            return Queen(piece_square, is_white)
 
-    def _move_piece__pawn_promotion(self):
-        pass
+    def _move_rook_when_castling(self, new_square, x_dir):
+        # Rook should go next to king, towards the centre.
+        if x_dir > 0:
+            logging.info(f"Casting long: {new_square}")
+            new_rook_x = new_square[0] + 1
+            former_rook_x = 0
+        else:
+            logging.info(f"Casting short: {new_square}")
+            new_rook_x = new_square[0] + 1
+            former_rook_x = self._board_size-1
 
-    def _move_piece_en_passant(self):
-        pass
+        new_rook_square = (new_rook_x, new_square[1])
+        r = Rook(new_rook_square, self._cur_player_is_white)
+        r.set_has_moved(True)
+
+        self.set_square(new_rook_square, r)
+        self.set_square((former_rook_x, new_square[1]), Square((former_rook_x, new_square[1])))
+
 
 class Square:
     def __init__(self, cur_square, **kwargs):
@@ -268,6 +295,7 @@ class Pawn(Piece, HasMovedMixin):
     def long_name():
         return "Pawn"
 
+    @is_landing_square_occupied
     def is_valid_move(self, new_square, board):
         logging.info("Checking validity of Pawn move from {} to {}".format(self._cur_square, new_square))
         x_diff = self._cur_square[0] - new_square[0]
@@ -310,8 +338,6 @@ class Pawn(Piece, HasMovedMixin):
                             (new_square[0], y)
                         )
 
-            # DOES THIS MOVE RESULT IN A CHECK? - FUTURE FUNCTIONALITY
-
             return True, ""
 
         else:
@@ -322,10 +348,6 @@ class Pawn(Piece, HasMovedMixin):
             square_to_check = board.get_square(new_square)
             if not square_to_check.is_piece():
                 return False, "Cannot move diagonally unless it's a capture."
-
-            # Cannot capture own piece
-            if square_to_check.is_white() == self._is_white:
-                return False, "Cannot capture own piece!"
 
             return True, ""
 
@@ -350,6 +372,7 @@ class Rook(Piece, HasMovedMixin):
     def long_name():
         return "Rook"
 
+    @is_landing_square_occupied
     def is_valid_move(self, new_square, board):
         logging.info("Checking validity of Rook move from {} to {}".format(self._cur_square, new_square))
         x_diff = self._cur_square[0] - new_square[0]
@@ -381,12 +404,6 @@ class Rook(Piece, HasMovedMixin):
                 if square_to_check.is_piece():
                     return False, "Rook is blocked by {} on {}".format(square_to_check.long_name(), tmp_coord)
 
-        landing_square = board.get_square(new_square)
-
-        # Can't capture own piece.
-        if landing_square.is_piece() and landing_square.is_white() == self.is_white():
-            return False, "The {} on {} belongs to you!".format(landing_square.long_name(), new_square)
-
         return True, ""
 
     def move(self, new_square):
@@ -409,6 +426,7 @@ class Bishop(Piece):
     def long_name():
         return "Bishop"
 
+    @is_landing_square_occupied
     def is_valid_move(self, new_square, board):
         cur_square = self.get_cur_square()
         x_diff = cur_square[0] - new_square[0]
@@ -431,12 +449,6 @@ class Bishop(Piece):
             if sq_to_check.is_piece():
                 return False, "Bishop is blocked by {} on {}".format(sq_to_check.long_name(), tmp_coord)
 
-        landing_square = board.get_square(new_square)
-
-        # Can't capture own piece.
-        if landing_square.is_piece() and landing_square.is_white() == self.is_white():
-            return False, "The {} on {} belongs to you!".format(landing_square.long_name(), new_square)
-
         return True, ""
 
     def move(self, new_square):
@@ -457,6 +469,7 @@ class Knight(Piece):
     def long_name():
         return "Knight"
 
+    @is_landing_square_occupied
     def is_valid_move(self, new_square, board):
         cur_square = self.get_cur_square()
         x_diff = cur_square[0] - new_square[0]
@@ -467,12 +480,6 @@ class Knight(Piece):
 
         if not (abs_x == 2 and abs_y == 1 or abs_x == 1 and abs_y == 2):
             return False, "Knights move in L-shapes. (1 square on one axis and 2 along another.)"
-
-        landing_square = board.get_square(new_square)
-
-        # Can't capture own piece.
-        if landing_square.is_piece() and landing_square.is_white() == self.is_white():
-            return False, "The {} on {} belongs to you!".format(landing_square.long_name(), new_square)
 
         return True, ""
 
@@ -494,6 +501,7 @@ class Queen(Piece):
     def long_name():
         return "Queen"
 
+    @is_landing_square_occupied
     def is_valid_move(self, new_square, board):
         cur_square = self.get_cur_square()
         x_diff = cur_square[0] - new_square[0]
@@ -547,12 +555,6 @@ class Queen(Piece):
 
         else:
             return False, "Queens move diagonally or in a straight line!"
-
-        landing_square = board.get_square(new_square)
-
-        # Can't capture own piece.
-        if landing_square.is_piece() and landing_square.is_white() == self.is_white():
-            return False, "The {} on {} belongs to you!".format(landing_square.long_name(), new_square)
 
         return True, ""
 
@@ -655,17 +657,20 @@ class King(Piece, HasMovedMixin):
 
         return False, ""
 
+    @is_landing_square_occupied
     def is_valid_move(self, new_square, board):
         cur_square = self.get_cur_square()
-        x = cur_square[0] - new_square[0]
-        y = cur_square[1] - new_square[1]
-        abs_x = abs(x)
-        abs_y = abs(y)
-        print(x, y, abs_x, abs_y)
+        x_diff = cur_square[0] - new_square[0]
+        y_diff = cur_square[1] - new_square[1]
+        abs_x = abs(x_diff)
+        abs_y = abs(y_diff)
 
         if self._has_moved is False and abs_x == 2:
+            if board.is_cur_player_in_check() is False:
+                return False, "Cannot castle when in check"
+
             # TODO: If expanding for Chess960 rules, will need to be more dynamic.
-            if x > 0:
+            if x_diff > 0:
                 rook_x = 0
                 for i in range(rook_x+1, cur_square[0]):
                     piece = board.get_square((i, cur_square[1]))
@@ -684,7 +689,6 @@ class King(Piece, HasMovedMixin):
                 rook_x = 7
                 for i in range(cur_square[0]+1, rook_x):
                     piece = board.get_square((i, cur_square[1]))
-                    print((i, cur_square[1]))
                     if piece.is_piece():
                         return False, "Cannot castle, {} on {}".format(piece.char_rep(), (i, cur_square[1]))
 
@@ -704,14 +708,6 @@ class King(Piece, HasMovedMixin):
         if abs_x > 1 or abs_y > 1:
             return False, "The King can only move one square at a time!"
 
-        landing_square = board.get_square(new_square)
-
-        # Can't capture own piece.
-        if landing_square.is_piece() and landing_square.is_white() == self.is_white():
-            return False, "The {} on {} belongs to you!".format(landing_square.long_name(), new_square)
-
-        res, err = self.is_in_check(board)
-        print(res, err)
         return True, ""
 
     def move(self, new_square):
