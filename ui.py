@@ -328,7 +328,7 @@ class ChessView(arcade.View):
                 self._gen_piece_placement()
                 self.highlight_checked_king, _ = self.board.is_cur_player_in_check()
 
-                x = self.board.is_statemate_or_checkmate()
+                x = self.board.is_stalemate_or_checkmate()
                 if x is not None:
                     if x == "CHECKMATE":
                         victory_view = VictoryView(False, not self.board.is_cur_player_white())
