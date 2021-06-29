@@ -1,6 +1,7 @@
+import logging
 import arcade
-import sys
-import os
+import arcade.gui
+
 from string import ascii_uppercase
 
 import pieces
@@ -15,17 +16,27 @@ SCREEN_TITLE = "DanChess"
 SQUARE_HEIGHT = 80
 SQUARE_WIDTH = 80
 
+# Margins
+BOARD_X_OFFSET = -100
+BOARD_Y_OFFSET = 0
+LETTER_OFFSET = 10
+NUMBER_OFFSET = 10
+OUTLINE_MARGIN_WIDTH = 5
+
 # Piece constants
 PIECE_HEIGHT = 40
 PIECE_WIDTH = 40
 IMAGE_SCALE = 3.2
 
-#Colours
+# Colours
 BLACK_SQUARE_COLOUR = arcade.color.ARSENIC
 WHITE_SQUARE_COLOUR = arcade.color.LIGHT_GRAY
 SELECTED_SQUARE_COLOUR = arcade.color.ARYLIDE_YELLOW
+POTENTIAL_SQUARE_COLOUR = arcade.color.ANDROID_GREEN
 CHECK_COLOUR = arcade.color.DARK_PASTEL_RED
 
+MAIN_MENU_BACKGROUND = arcade.color.DARK_BYZANTIUM
+MAIN_MENU_TEXT = arcade.color.WHITE_SMOKE
 
 
 SPRITE_LOOKUP_DICT = {
@@ -45,6 +56,63 @@ SPRITE_LOOKUP_DICT = {
 }
 
 
+class MainMenuView(arcade.View):
+    def on_show(self):
+        arcade.set_background_color(MAIN_MENU_BACKGROUND)
+        arcade.set_viewport(0, SCREEN_WIDTH - 1, 0, SCREEN_HEIGHT - 1)
+
+    def on_draw(self):
+        arcade.start_render()
+        arcade.draw_text("DANCHESS", SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2,
+                         MAIN_MENU_TEXT, font_size=50, anchor_x="center")
+        arcade.draw_text("Click to start", SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 - 50,
+                         MAIN_MENU_TEXT, font_size=20, anchor_x="center")
+
+    def on_mouse_press(self, _x, _y, _button, _modifiers):
+        chess_view = ChessView()
+        chess_view.setup()
+        self.window.show_view(chess_view)
+
+
+class VictoryView(arcade.View):
+    def __init__(self, was_stalemate, winner_was_white):
+        super().__init__()
+        if was_stalemate:
+            self.title_text = "STALEMATE"
+            self.display_text = "ITS A DRAW: 1/2 - 1/2"
+            self.font_color = arcade.color.DARK_GRAY
+            self.background_color = arcade.color.LIGHT_GRAY
+        else:
+            self.title_text = "CHECKMATE"
+            if winner_was_white:
+                self.display_text = "WHITE WAS VICTORIOUS: 1 - 0"
+                self.font_color = arcade.color.BLACK
+                self.background_color = arcade.color.WHITE_SMOKE
+
+            else:
+                self.display_text = "BLACK WAS VICTORIOUS: 0 - 1"
+                self.font_color = arcade.color.WHITE_SMOKE
+                self.background_color = arcade.color.BLACK
+
+    def on_show(self):
+        arcade.set_background_color(self.background_color)
+        arcade.set_viewport(0, SCREEN_WIDTH - 1, 0, SCREEN_HEIGHT - 1)
+
+    def on_draw(self):
+        arcade.start_render()
+        arcade.draw_text(self.title_text, SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 + 100,
+                         self.font_color, font_size=80, anchor_x="center")
+
+        arcade.draw_text(self.display_text, SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2,
+                         self.font_color, font_size=30, anchor_x="center")
+        arcade.draw_text("Click to return to main menu", SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 - 50,
+                         self.font_color, font_size=20, anchor_x="center")
+
+    def on_mouse_press(self, _x, _y, _button, _modifiers):
+        main_menu_view = MainMenuView()
+        self.window.show_view(main_menu_view)
+
+
 class ChessView(arcade.View):
     def __init__(self):
         super().__init__()
@@ -52,8 +120,11 @@ class ChessView(arcade.View):
         # GAME VARS
         self.board = pieces.Board()
         self.piece_selected = None
+        self.piece_selected_moves = None
+
         self.is_white_perspective_active = True
         self.highlight_checked_king = False
+        self.show_possible_moves_active = False
 
         # RENDERING LOGIC
         arcade.set_background_color(arcade.color.ALMOND)
@@ -61,15 +132,18 @@ class ChessView(arcade.View):
         self.tile_count_x = self.board.get_board_size()
         self.tile_count_y = self.board.get_board_size()
 
-        self.tile_draw_start_x = int(SCREEN_WIDTH / 2) - (SQUARE_WIDTH * ((self.tile_count_x/2)-1) + (SQUARE_WIDTH/2))
-        self.tile_draw_start_y = int(SCREEN_HEIGHT / 2) - (SQUARE_HEIGHT * ((self.tile_count_y/2)-1) + (SQUARE_HEIGHT/2))
+        self.tile_draw_start_x = int(SCREEN_WIDTH / 2)
+        self.tile_draw_start_y = int(SCREEN_HEIGHT / 2)
+
+        self.tile_draw_start_x -= (SQUARE_WIDTH * ((self.tile_count_x/2)-1) + (SQUARE_WIDTH/2))
+        self.tile_draw_start_y -= (SQUARE_HEIGHT * ((self.tile_count_y/2)-1) + (SQUARE_HEIGHT/2))
+
+        self.tile_draw_start_x += BOARD_X_OFFSET
+        self.tile_draw_start_y += BOARD_Y_OFFSET
 
         self.chess_piece_sprite_list = None
 
     def setup(self):
-
-        # Create initial sprite list for pieces
-
         self._gen_piece_placement()
 
     def on_draw(self):
@@ -126,12 +200,12 @@ class ChessView(arcade.View):
 
         # Draw Outline around board.
         arcade.draw_rectangle_outline(
-            SCREEN_WIDTH / 2,
-            SCREEN_HEIGHT/2,
-            self.tile_draw_start_x + int(SQUARE_WIDTH * 5.1),
-            self.tile_draw_start_x + int(SQUARE_HEIGHT * 5.1),
+            (SCREEN_WIDTH / 2) + BOARD_X_OFFSET,
+            (SCREEN_HEIGHT / 2) + BOARD_Y_OFFSET,
+            (self.tile_count_x * SQUARE_WIDTH) + OUTLINE_MARGIN_WIDTH,
+            (self.tile_count_y * SQUARE_HEIGHT) + OUTLINE_MARGIN_WIDTH,
             arcade.color.BLACK,
-            5
+            OUTLINE_MARGIN_WIDTH
         )
 
         file_chars = ascii_uppercase[:self.tile_count_x]
@@ -142,7 +216,7 @@ class ChessView(arcade.View):
         for x in range(self.tile_count_x):
             arcade.draw_text(
                 file_chars[x],
-                self.tile_draw_start_x + SQUARE_WIDTH * x - 10,
+                self.tile_draw_start_x + SQUARE_WIDTH * x - LETTER_OFFSET,
                 self.tile_draw_start_y - SQUARE_HEIGHT,
                 arcade.color.BLACK,
                 18,
@@ -157,11 +231,10 @@ class ChessView(arcade.View):
             arcade.draw_text(
                 rank_chars[y],
                 self.tile_draw_start_x - SQUARE_WIDTH,
-                self.tile_draw_start_y + SQUARE_WIDTH * y - 10,
+                self.tile_draw_start_y + SQUARE_WIDTH * y - NUMBER_OFFSET,
                 arcade.color.BLACK,
                 18,
             )
-
 
         # Draw highlight around checked king
         if self.highlight_checked_king:
@@ -181,7 +254,7 @@ class ChessView(arcade.View):
                 CHECK_COLOUR
             )
 
-        # Draw highlight around selected piece
+        # Draw highlight around selected piece and possible squares
         if self.piece_selected is not None:
             if self.is_white_perspective_active:
                 select_x = self.piece_selected[0]
@@ -198,6 +271,33 @@ class ChessView(arcade.View):
                 SELECTED_SQUARE_COLOUR
             )
 
+            if self.show_possible_moves_active:
+                # Highlight squares that piece can move to:
+                for square in self.piece_selected_moves:
+                    if self.is_white_perspective_active:
+                        possible_x = square[0]
+                        possible_y = square[1]
+                    else:
+                        possible_x = self.tile_count_x - 1 - square[0]
+                        possible_y = self.tile_count_y - 1 - square[1]
+
+                    arcade.draw_ellipse_filled(
+                        self.tile_draw_start_x + (SQUARE_WIDTH * possible_x),
+                        self.tile_draw_start_y + (SQUARE_HEIGHT * possible_y),
+                        SQUARE_WIDTH/2,
+                        SQUARE_HEIGHT/2,
+                        POTENTIAL_SQUARE_COLOUR
+                    )
+                    arcade.draw_ellipse_outline(
+                        self.tile_draw_start_x + (SQUARE_WIDTH * possible_x),
+                        self.tile_draw_start_y + (SQUARE_HEIGHT * possible_y),
+                        SQUARE_WIDTH/2,
+                        SQUARE_HEIGHT/2,
+                        arcade.color.BLACK,
+                        3,
+                        num_segments=150
+                    )
+
     def on_mouse_press(self, x: float, y: float, button: int, modifiers: int):
         clicked_tile = self._calc_board_coord(x, y)
 
@@ -213,26 +313,31 @@ class ChessView(arcade.View):
             clicked_tile = (self.tile_count_x - 1 - clicked_tile[0], self.tile_count_y - 1 - clicked_tile[1])
 
         if self.piece_selected is None:
-            res, err = self.board.check_if_selection_valid(clicked_tile)
-            if res:
+            selection_is_valid, err = self.board.check_if_selection_valid(clicked_tile)
+
+            if selection_is_valid:
                 self.piece_selected = clicked_tile
-            else:
-                print(err)
-
+                self.piece_selected_moves = self.board.list_valid_moves_for_piece(self.piece_selected)
         else:
-            res, err = self.board.check_if_move_valid(self.piece_selected, clicked_tile)
 
-            if res:
+            move_is_valid, err = self.board.check_if_move_valid(self.piece_selected, clicked_tile)
+
+            if move_is_valid:
                 self.board.move_piece(self.piece_selected, clicked_tile)
                 self.board.change_player()
                 self._gen_piece_placement()
-
                 self.highlight_checked_king, _ = self.board.is_cur_player_in_check()
 
-            else:
-                print(err)
+                x = self.board.is_statemate_or_checkmate()
+                if x is not None:
+                    if x == "CHECKMATE":
+                        victory_view = VictoryView(False, not self.board.is_cur_player_white())
+                    else:
+                        victory_view = VictoryView(True, not self.board.is_cur_player_white())
+                    self.window.show_view(victory_view)
 
             self.piece_selected = None
+            self.piece_selected_moves = None
 
     def _calc_board_coord(self, x, y):
         file = x - self.tile_draw_start_x + (SQUARE_WIDTH/2)
@@ -247,6 +352,10 @@ class ChessView(arcade.View):
         if symbol == arcade.key.SPACE:
             self.is_white_perspective_active = not self.is_white_perspective_active
             self._gen_piece_placement()
+        elif symbol == arcade.key.ENTER:
+            self.show_possible_moves_active = not self.show_possible_moves_active
+        elif symbol == arcade.key.ESCAPE:
+            exit(0)
 
     def on_mouse_release(self, x: float, y: float, button: int, modifiers: int):
         pass
@@ -257,17 +366,12 @@ class ChessView(arcade.View):
 
 def main():
 
-    #Pyinstaller Boilerplate for data files
-    if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
-        os.chdir(sys._MEIPASS)
+    logging.basicConfig(filename="app.log", format='%(asctime)s - %(message)s', level=logging.INFO)
 
-    #MAIN SCRIPT
+    # MAIN SCRIPT
     window = arcade.Window(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE)
-    chess_view = ChessView()
-
-    window.show_view(chess_view)
-    chess_view.setup()
-
+    main_menu_view = MainMenuView()
+    window.show_view(main_menu_view)
     arcade.run()
 
 
