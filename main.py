@@ -1,5 +1,4 @@
 import logging
-import arcade
 
 import pieces
 
@@ -46,7 +45,7 @@ def get_coordinate_pair(board_size):
 
             successful_input = True
 
-            return (piece_x, piece_y)
+            return piece_x, piece_y
 
         except ValueError:
             print("INVALID, choose an int between 0 and 7 ")
