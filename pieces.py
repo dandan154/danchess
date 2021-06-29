@@ -214,7 +214,6 @@ class Board:
             return Queen(piece_square, is_white)
 
     def list_valid_moves_for_piece(self, piece_square):
-        piece = self.get_square(piece_square)
         valid_moves = []
         for x in range(self._board_size):
             for y in range(self._board_size):
@@ -224,7 +223,7 @@ class Board:
         return valid_moves
 
     def list_valid_moves_for_player(self):
-        possible_moves=[]
+        possible_moves = []
         for x in range(self._board_size):
             for y in range(self._board_size):
                 sq = self.get_square((x, y))
@@ -234,14 +233,16 @@ class Board:
                         possible_moves.append(p_m)
         return possible_moves
 
-    def is_statemate_or_checkmate(self):
+    def is_stalemate_or_checkmate(self):
         x = self.list_valid_moves_for_player()
         if len(x) == 0:
-            if self.is_cur_player_in_check():
+            res, _ = self.is_cur_player_in_check()
+            if res:
                 return "CHECKMATE"
             else:
                 return "STALEMATE"
         return None
+
 
 class Square:
     def __init__(self, cur_square, **kwargs):
